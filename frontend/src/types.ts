@@ -1,3 +1,5 @@
+import type { BookFormat, Category } from "./catalog";
+
 export interface Book {
   userId: string;
   isbn: string;
@@ -6,6 +8,8 @@ export interface Book {
   publisher: string;
   publishedDate: string;
   coverImageUrl: string;
+  bookFormat: BookFormat;
+  category: Category;
   createdAt: string;
 }
 
@@ -16,6 +20,11 @@ export interface BookLookupResult {
   publisher: string;
   publishedDate: string;
   coverImageUrl: string;
+}
+
+export interface CreateBookPayload extends BookLookupResult {
+  bookFormat: BookFormat;
+  category: Category;
 }
 
 export interface AuthState {

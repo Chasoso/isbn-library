@@ -11,7 +11,10 @@ from shared.responses import json_response
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     try:
         user_id = get_user_id(event)
-        query_text = ((event.get("queryStringParameters") or {}).get("q") or "").strip().lower()
+        query_params = event.get("queryStringParameters") or {}
+        query_text = (query_params.get("q") or "").strip().lower()
+        book_format = (query_params.get("bookFormat") or "").strip()
+        category = (query_params.get("category") or "").strip()
 
         table = get_books_table()
         result = table.query(
@@ -22,6 +25,16 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         if query_text:
             items = [
                 item for item in items if query_text in item.get("title", "").lower()
+            ]
+
+        if book_format:
+            items = [
+                item for item in items if item.get("bookFormat", "その他") == book_format
+            ]
+
+        if category:
+            items = [
+                item for item in items if item.get("category", "その他") == category
             ]
 
         items = sorted(items, key=lambda item: item.get("createdAt", ""), reverse=True)

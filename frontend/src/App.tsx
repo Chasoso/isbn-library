@@ -11,7 +11,9 @@ import {
 } from "react-router-dom";
 import { signIn, signOut, userManager, handleSignInCallback } from "./lib/auth";
 import { ApiError, createBook, deleteBook, getBook, getBooks, lookupBook } from "./lib/api";
+import { bookFormats, categories } from "./catalog";
 import { normalizeIsbn } from "./lib/isbn";
+import type { BookFormat, Category } from "./catalog";
 import type { AuthState, Book, BookLookupResult } from "./types";
 
 const initialAuthState: AuthState = {
@@ -400,6 +402,8 @@ function ResultPage({ accessToken }: { accessToken: string }) {
   const [lookupFailed, setLookupFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [bookFormat, setBookFormat] = useState<BookFormat>("その他");
+  const [category, setCategory] = useState<Category>("その他");
 
   useEffect(() => {
     const load = async (): Promise<void> => {
@@ -457,6 +461,8 @@ function ResultPage({ accessToken }: { accessToken: string }) {
         publisher: book.publisher,
         publishedDate: book.publishedDate,
         coverImageUrl: book.coverImageUrl,
+        bookFormat,
+        category,
       });
       setMessage("登録しました。");
       setRegistered(true);
@@ -504,7 +510,43 @@ function ResultPage({ accessToken }: { accessToken: string }) {
                 <p>
                   <strong>出版日:</strong> {book.publishedDate || "-"}
                 </p>
+                <p>
+                  <strong>形態:</strong> {"bookFormat" in book ? book.bookFormat : bookFormat}
+                </p>
+                <p>
+                  <strong>ジャンル:</strong> {"category" in book ? book.category : category}
+                </p>
               </div>
+            </div>
+          ) : null}
+          {!loading && !registered && book ? (
+            <div className="classification-grid">
+              <label>
+                <span>形態</span>
+                <select
+                  value={bookFormat}
+                  onChange={(event) => setBookFormat(event.target.value as BookFormat)}
+                >
+                  {bookFormats.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>ジャンル</span>
+                <select
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value as Category)}
+                >
+                  {categories.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           ) : null}
           {!loading && !registered && book ? (
@@ -524,17 +566,27 @@ function BooksPage({ accessToken }: { accessToken: string }) {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
+  const [bookFormatFilter, setBookFormatFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const query = new URLSearchParams(location.search).get("q") ?? "";
+  const bookFormat = new URLSearchParams(location.search).get("bookFormat") ?? "";
+  const category = new URLSearchParams(location.search).get("category") ?? "";
 
   useEffect(() => {
     setSearchText(query);
-  }, [query]);
+    setBookFormatFilter(bookFormat);
+    setCategoryFilter(category);
+  }, [query, bookFormat, category]);
 
   useEffect(() => {
     const load = async (): Promise<void> => {
       setLoading(true);
       try {
-        const result = await getBooks(accessToken, query);
+        const result = await getBooks(accessToken, {
+          query,
+          bookFormat,
+          category,
+        });
         setBooks(result.items);
       } finally {
         setLoading(false);
@@ -542,7 +594,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
     };
 
     void load();
-  }, [accessToken, query]);
+  }, [accessToken, query, bookFormat, category]);
 
   return (
     <Layout title="蔵書一覧">
@@ -552,7 +604,17 @@ function BooksPage({ accessToken }: { accessToken: string }) {
             className="search-row"
             onSubmit={(event) => {
               event.preventDefault();
-              navigate(`/books?q=${encodeURIComponent(searchText.trim())}`);
+              const params = new URLSearchParams();
+              if (searchText.trim()) {
+                params.set("q", searchText.trim());
+              }
+              if (bookFormatFilter) {
+                params.set("bookFormat", bookFormatFilter);
+              }
+              if (categoryFilter) {
+                params.set("category", categoryFilter);
+              }
+              navigate(`/books${params.toString() ? `?${params.toString()}` : ""}`);
             }}
           >
             <input
@@ -560,11 +622,37 @@ function BooksPage({ accessToken }: { accessToken: string }) {
               onChange={(event) => setSearchText(event.target.value)}
               placeholder="タイトルで検索"
             />
+            <select
+              value={bookFormatFilter}
+              onChange={(event) => setBookFormatFilter(event.target.value)}
+            >
+              <option value="">すべての形態</option>
+              {bookFormats.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+            <select
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+            >
+              <option value="">すべてのジャンル</option>
+              {categories.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
             <button className="primary-button" type="submit">
               検索
             </button>
           </form>
-          <p className="muted">{query ? `検索条件: ${query}` : "全件表示"}</p>
+          <p className="muted">
+            {query || bookFormat || category
+              ? `検索条件: ${query || "タイトル指定なし"} / ${bookFormat || "形態すべて"} / ${category || "ジャンルすべて"}`
+              : "全件表示"}
+          </p>
           {loading ? <p>読み込み中...</p> : null}
           {!loading && books.length === 0 ? <p>該当する書籍はありません。</p> : null}
           <div className="book-list">
@@ -578,6 +666,9 @@ function BooksPage({ accessToken }: { accessToken: string }) {
                 <div>
                   <strong>{book.title}</strong>
                   <p>{book.author || "著者不明"}</p>
+                  <p className="muted">
+                    {book.bookFormat} / {book.category}
+                  </p>
                   <p className="muted">{book.isbn}</p>
                 </div>
               </Link>
@@ -662,6 +753,12 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
                 </p>
                 <p>
                   <strong>ISBN:</strong> {book.isbn}
+                </p>
+                <p>
+                  <strong>形態:</strong> {book.bookFormat}
+                </p>
+                <p>
+                  <strong>ジャンル:</strong> {book.category}
                 </p>
                 <p>
                   <strong>登録日時:</strong> {book.createdAt}

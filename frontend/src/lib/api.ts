@@ -1,5 +1,5 @@
 import { config } from "../config";
-import type { Book, BookLookupResult } from "../types";
+import type { Book, BookLookupResult, CreateBookPayload } from "../types";
 
 export class ApiError extends Error {
   status: number;
@@ -39,10 +39,28 @@ const request = async <T>(
 
 export const getBooks = async (
   accessToken: string,
-  query?: string,
+  filters?: {
+    query?: string;
+    bookFormat?: string;
+    category?: string;
+  },
 ): Promise<{ items: Book[] }> => {
-  const search = query ? `?q=${encodeURIComponent(query)}` : "";
-  return request<{ items: Book[] }>(`/books${search}`, accessToken);
+  const params = new URLSearchParams();
+
+  if (filters?.query) {
+    params.set("q", filters.query);
+  }
+
+  if (filters?.bookFormat) {
+    params.set("bookFormat", filters.bookFormat);
+  }
+
+  if (filters?.category) {
+    params.set("category", filters.category);
+  }
+
+  const search = params.toString();
+  return request<{ items: Book[] }>(`/books${search ? `?${search}` : ""}`, accessToken);
 };
 
 export const getBook = async (
@@ -52,7 +70,7 @@ export const getBook = async (
 
 export const createBook = async (
   accessToken: string,
-  payload: BookLookupResult,
+  payload: CreateBookPayload,
 ): Promise<Book> =>
   request<Book>("/books", accessToken, {
     method: "POST",

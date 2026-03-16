@@ -77,4 +77,13 @@ Amplify Hosting の Basic 認証はアプリ外設定です。本リポジトリ
 - `DELETE /books/{isbn}`
 - `GET /lookup/{isbn}`
 
+## 分類
+
+登録時に次の 2 種類の分類を付与できます。
+
+- `bookFormat`: 新書、文庫、単行本、ハードカバー、雑誌、電子書籍、その他
+- `category`: 技術書、小説、ビジネス、デザイン、歴史、統計、趣味、漫画、その他
+
+重複判定は引き続き `userId + isbn` のみで行い、分類情報は使用しません。蔵書一覧では分類条件でフィルタできます。
+
 詳しいセットアップは [docs/setup.md](/d:/Git/isbn-library/docs/setup.md) を参照してください。

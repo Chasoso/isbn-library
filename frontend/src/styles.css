@@ -23,7 +23,8 @@ a {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -107,6 +108,17 @@ img {
   margin-top: 14px;
 }
 
+.classification-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.classification-grid label {
+  display: grid;
+  gap: 6px;
+}
+
 .primary-button,
 .secondary-button,
 .danger-button {
@@ -136,7 +148,8 @@ img {
   margin-top: 16px;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-height: 44px;
   border-radius: 12px;
@@ -223,5 +236,9 @@ input {
 
   .detail-grid {
     grid-template-columns: 140px 1fr;
+  }
+
+  .classification-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }

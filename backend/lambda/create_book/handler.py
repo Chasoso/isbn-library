@@ -5,6 +5,12 @@ from typing import Any
 from botocore.exceptions import ClientError
 
 from shared.auth import get_user_id
+from shared.catalog import (
+    BOOK_FORMATS,
+    CATEGORIES,
+    DEFAULT_BOOK_FORMAT,
+    DEFAULT_CATEGORY,
+)
 from shared.dynamo import get_books_table
 from shared.isbn import normalize_isbn
 from shared.responses import json_response
@@ -19,6 +25,8 @@ def build_item(user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         "publisher": payload.get("publisher", ""),
         "publishedDate": payload.get("publishedDate", ""),
         "coverImageUrl": payload.get("coverImageUrl", ""),
+        "bookFormat": payload.get("bookFormat", DEFAULT_BOOK_FORMAT),
+        "category": payload.get("category", DEFAULT_CATEGORY),
         "createdAt": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -32,7 +40,18 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         if not isbn:
             return json_response(400, {"message": "Invalid ISBN"})
 
+        book_format = str(payload.get("bookFormat", DEFAULT_BOOK_FORMAT))
+        category = str(payload.get("category", DEFAULT_CATEGORY))
+
+        if book_format not in BOOK_FORMATS:
+            return json_response(400, {"message": "Invalid bookFormat"})
+
+        if category not in CATEGORIES:
+            return json_response(400, {"message": "Invalid category"})
+
         payload["isbn"] = isbn
+        payload["bookFormat"] = book_format
+        payload["category"] = category
         item = build_item(user_id, payload)
 
         table = get_books_table()
