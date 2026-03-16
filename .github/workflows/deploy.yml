@@ -80,7 +80,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: CDK deploy
-        run: cdk deploy --require-approval never
+        run: cdk deploy --require-approval never --quiet
         env:
           COGNITO_DOMAIN_PREFIX: ${{ vars.COGNITO_DOMAIN_PREFIX }}
           COGNITO_CALLBACK_URLS: ${{ vars.COGNITO_CALLBACK_URLS }}

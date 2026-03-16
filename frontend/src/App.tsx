@@ -305,7 +305,11 @@ function ScanPage() {
 
       detected = true;
       setMessage(`ISBN ${isbn} を検出しました。判定画面へ移動します...`);
-      await scanner.stop();
+      try {
+        await scanner.stop();
+      } catch {
+        // Ignore stop errors during route transition.
+      }
       if (active) {
         navigate(`/result/${isbn}`);
       }
@@ -363,7 +367,11 @@ function ScanPage() {
       if (started) {
         void scanner.stop().catch(() => undefined);
       }
-      scanner.clear();
+      try {
+        scanner.clear();
+      } catch {
+        // Ignore cleanup errors from html5-qrcode on unmount.
+      }
     };
   }, [navigate]);
 
