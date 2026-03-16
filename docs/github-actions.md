@@ -265,3 +265,4 @@ CDK が実際に作るロール名を一度デプロイ後に確認し、その 
 - `frontend-build` は設定値の妥当性確認も兼ねています
 - Amplify へのデプロイは GitHub Actions から `start-job` を呼び、Amplify 側のビルドを開始します
 - Amplify アプリ未作成時は `AMPLIFY_APP_ID` と `AMPLIFY_BRANCH_NAME` を未設定にすれば、Amplify ジョブはスキップされます
+- `VITE_COGNITO_AUTHORITY` には Hosted UI ドメインではなく `JwtIssuer` を設定します

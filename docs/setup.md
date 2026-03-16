@@ -24,6 +24,11 @@
 - Redirect URI: `http://localhost:5173/auth/callback`
 - Logout URI: `http://localhost:5173`
 
+`VITE_COGNITO_AUTHORITY` は Hosted UI ドメインではなく、Cognito User Pool の issuer URL を設定してください。
+
+- 例: `https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_xxxxxxxx`
+- CloudFormation Output では `JwtIssuer` を使います
+
 ## 3. CDK デプロイ用環境変数
 
 PowerShell 例:

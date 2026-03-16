@@ -53,6 +53,13 @@ cdk deploy
 
 GitHub Actions で `main` への push 時に `frontend build -> CDK deploy -> Amplify 再デプロイ` を実行できます。詳細は [docs/github-actions.md](/d:/Git/isbn-library/docs/github-actions.md) を参照してください。
 
+## Cognito 設定メモ
+
+フロントエンドの `VITE_COGNITO_AUTHORITY` には Hosted UI ドメインではなく、User Pool の issuer URL を設定します。
+
+- 正しい例: `https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_xxxxxxxx`
+- 誤った例: `https://isbn-library-dev.auth.ap-northeast-1.amazoncognito.com`
+
 ## Amplify Hosting メモ
 
 Amplify Hosting の Basic 認証はアプリ外設定です。本リポジトリでは実装していません。必要であれば Amplify Hosting 側のアクセス制御設定で保護してください。
