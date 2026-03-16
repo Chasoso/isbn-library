@@ -3,6 +3,8 @@ frontend/dist/
 frontend/.env
 infrastructure/.venv/
 infrastructure/cdk.out/
+backend/.coverage
+backend/coverage.xml
 __pycache__/
 *.pyc
 .DS_Store

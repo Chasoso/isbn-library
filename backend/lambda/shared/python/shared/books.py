@@ -1,5 +1,7 @@
 from typing import Any
 
+from shared.catalog import DEFAULT_BOOK_FORMAT, DEFAULT_CATEGORY
+
 
 def to_book_response(item: dict[str, Any]) -> dict[str, Any]:
     return {
@@ -10,7 +12,7 @@ def to_book_response(item: dict[str, Any]) -> dict[str, Any]:
         "publisher": item.get("publisher", ""),
         "publishedDate": item.get("publishedDate", ""),
         "coverImageUrl": item.get("coverImageUrl", ""),
-        "bookFormat": item.get("bookFormat", "その他"),
-        "category": item.get("category", "その他"),
+        "bookFormat": item.get("bookFormat", DEFAULT_BOOK_FORMAT),
+        "category": item.get("category", DEFAULT_CATEGORY),
         "createdAt": item.get("createdAt", ""),
     }

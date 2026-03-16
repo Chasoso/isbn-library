@@ -53,6 +53,18 @@ cdk deploy
 
 GitHub Actions で `main` への push 時に `frontend build -> CDK deploy -> Amplify 再デプロイ` を実行できます。詳細は [docs/github-actions.md](/d:/Git/isbn-library/docs/github-actions.md) を参照してください。
 
+## Lambda テスト
+
+Lambda は `pytest` で自動テストできます。
+
+```bash
+cd backend
+pip install -r requirements-test.txt
+pytest
+```
+
+カバレッジは `coverage.xml` とターミナル出力で確認できます。GitHub Actions でも自動実行されます。
+
 ## Cognito 設定メモ
 
 フロントエンドの `VITE_COGNITO_AUTHORITY` には Hosted UI ドメインではなく、User Pool の issuer URL を設定します。

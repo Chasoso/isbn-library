@@ -5,11 +5,14 @@
 このリポジトリには `main` ブランチへの push をトリガーに、以下を自動実行するワークフローを追加しています。
 
 1. `frontend` の依存関係インストール
-2. `frontend build`
-3. `infrastructure` の `cdk deploy`
-4. Amplify Hosting の再デプロイ開始
+2. Lambda テスト + カバレッジ計測
+3. `frontend build`
+4. `infrastructure` の `cdk deploy`
+5. Amplify Hosting の再デプロイ開始
 
 ワークフロー定義は [deploy.yml](/d:/Git/isbn-library/.github/workflows/deploy.yml) です。
+
+Lambda テスト専用のワークフローは [backend-tests.yml](/d:/Git/isbn-library/.github/workflows/backend-tests.yml) です。`push` / `pull_request` / 手動実行でカバレッジ付きテストを実行します。
 
 ## 前提
 

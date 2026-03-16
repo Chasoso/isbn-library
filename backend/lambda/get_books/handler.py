@@ -4,6 +4,7 @@ from boto3.dynamodb.conditions import Key
 
 from shared.auth import get_user_id
 from shared.books import to_book_response
+from shared.catalog import DEFAULT_BOOK_FORMAT, DEFAULT_CATEGORY
 from shared.dynamo import get_books_table
 from shared.responses import json_response
 
@@ -17,9 +18,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         category = (query_params.get("category") or "").strip()
 
         table = get_books_table()
-        result = table.query(
-            KeyConditionExpression=Key("userId").eq(user_id),
-        )
+        result = table.query(KeyConditionExpression=Key("userId").eq(user_id))
         items = result.get("Items", [])
 
         if query_text:
@@ -29,12 +28,16 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
         if book_format:
             items = [
-                item for item in items if item.get("bookFormat", "その他") == book_format
+                item
+                for item in items
+                if item.get("bookFormat", DEFAULT_BOOK_FORMAT) == book_format
             ]
 
         if category:
             items = [
-                item for item in items if item.get("category", "その他") == category
+                item
+                for item in items
+                if item.get("category", DEFAULT_CATEGORY) == category
             ]
 
         items = sorted(items, key=lambda item: item.get("createdAt", ""), reverse=True)
