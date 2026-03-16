@@ -1,7 +1,9 @@
 import json
+import time
 from typing import Any
 from urllib.parse import urlencode
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 from shared.constants import GOOGLE_BOOKS_API_URL
 from shared.isbn import normalize_isbn
@@ -28,6 +30,37 @@ def extract_book(isbn: str, payload: dict[str, Any]) -> dict[str, str] | None:
     }
 
 
+def fetch_google_books_payload(isbn: str) -> dict[str, Any]:
+    query = urlencode({"q": f"isbn:{isbn}", "maxResults": 1})
+    request = Request(
+        f"{GOOGLE_BOOKS_API_URL}?{query}",
+        headers={
+            "User-Agent": "isbn-library/1.0",
+            "Accept": "application/json",
+        },
+    )
+
+    retry_delays = [0.4, 0.8, 1.6]
+
+    for attempt, delay in enumerate(retry_delays, start=1):
+        try:
+            with urlopen(request, timeout=10) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as error:
+            if error.code == 429:
+                if attempt == len(retry_delays):
+                    raise
+                time.sleep(delay)
+                continue
+            raise
+        except URLError:
+            if attempt == len(retry_delays):
+                raise
+            time.sleep(delay)
+
+    raise RuntimeError("Failed to fetch Google Books payload")
+
+
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     try:
         raw_isbn = (event.get("pathParameters") or {}).get("isbn", "")
@@ -36,14 +69,23 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         if not isbn:
             return json_response(400, {"message": "Invalid ISBN"})
 
-        query = urlencode({"q": f"isbn:{isbn}", "maxResults": 1})
-        with urlopen(f"{GOOGLE_BOOKS_API_URL}?{query}") as response:
-            payload = json.loads(response.read().decode("utf-8"))
+        payload = fetch_google_books_payload(isbn)
 
         book = extract_book(isbn, payload)
         if not book:
             return json_response(404, {"message": "Book metadata not found"})
 
         return json_response(200, book)
+    except HTTPError as error:
+        if error.code == 429:
+            return json_response(
+                503,
+                {
+                    "message": "Google Books API rate limit exceeded. Please try again shortly."
+                },
+            )
+        return json_response(502, {"message": f"Failed to lookup book: {error}"})
+    except URLError as error:
+        return json_response(502, {"message": f"Failed to lookup book: {error}"})
     except Exception as error:
         return json_response(500, {"message": f"Failed to lookup book: {error}"})
