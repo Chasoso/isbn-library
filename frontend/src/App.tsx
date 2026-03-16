@@ -20,6 +20,7 @@ const initialAuthState: AuthState = {
   isAuthenticated: false,
   accessToken: null,
   email: null,
+  name: null,
   loading: true,
 };
 
@@ -40,6 +41,7 @@ function App() {
         isAuthenticated: Boolean(user && !user.expired),
         accessToken: user?.access_token ?? null,
         email: user?.profile.email?.toString() ?? null,
+        name: user?.profile.name?.toString() ?? null,
         loading: false,
       });
     };
@@ -94,8 +96,6 @@ function ProtectedLayout({
   authState: AuthState;
   children: JSX.Element;
 }) {
-  const location = useLocation();
-
   if (!authState.isAuthenticated) {
     return (
       <div className="page-shell centered">
@@ -106,9 +106,8 @@ function ProtectedLayout({
             自己サインアップは無効です。管理者が作成した Cognito ユーザーでログインしてください。
           </p>
           <button className="primary-button" onClick={() => void signIn()}>
-            Cognito でログイン
+            ログイン
           </button>
-          <p className="muted">現在のパス: {location.pathname}</p>
         </div>
       </div>
     );
@@ -166,6 +165,7 @@ function AuthCallbackPage({
           isAuthenticated: Boolean(user && !user.expired),
           accessToken: user?.access_token ?? null,
           email: user?.profile.email?.toString() ?? null,
+          name: user?.profile.name?.toString() ?? null,
           loading: false,
         });
         navigate("/", { replace: true });
@@ -209,7 +209,7 @@ function HomePage({ authState }: { authState: AuthState }) {
   }, [authState.accessToken]);
 
   return (
-    <Layout title="ホーム" email={authState.email}>
+    <Layout title="ホーム" email={authState.name}>
       <main className="stack">
         <section className="hero-card">
           <p className="hero-label">重複購入をその場で防ぐ</p>

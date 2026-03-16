@@ -31,5 +31,6 @@ export interface AuthState {
   isAuthenticated: boolean;
   accessToken: string | null;
   email: string | null;
+  name: string | null;
   loading: boolean;
 }
