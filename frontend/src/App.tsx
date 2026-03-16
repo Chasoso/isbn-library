@@ -1,4 +1,4 @@
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { useEffect, useMemo, useState } from "react";
 import {
   Link,
@@ -167,7 +167,7 @@ function AuthCallbackPage({
           loading: false,
         });
         navigate("/", { replace: true });
-      } catch (_callbackError) {
+      } catch {
         setError("ログインコールバックの処理に失敗しました。");
       }
     };
@@ -270,44 +270,83 @@ function HomePage({ authState }: { authState: AuthState }) {
 
 function ScanPage() {
   const navigate = useNavigate();
-  const [message, setMessage] = useState("カメラを起動しています...");
+  const [message, setMessage] = useState(
+    "バーコードを枠いっぱいに映し、10cm ほど離して固定してください。",
+  );
 
   useEffect(() => {
     const elementId = "scanner";
-    const scanner = new Html5Qrcode(elementId);
+    const scanner = new Html5Qrcode(elementId, {
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+      ],
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true,
+      },
+      verbose: false,
+    });
     let active = true;
     let detected = false;
     let started = false;
 
+    const onDetected = async (decodedText: string): Promise<void> => {
+      if (detected) {
+        return;
+      }
+
+      const isbn = normalizeIsbn(decodedText);
+      if (!isbn) {
+        setMessage("ISBN バーコードを枠内にまっすぐ映してください。");
+        return;
+      }
+
+      detected = true;
+      setMessage(`ISBN ${isbn} を検出しました。判定画面へ移動します...`);
+      await scanner.stop();
+      if (active) {
+        navigate(`/result/${isbn}`);
+      }
+    };
+
     const start = async (): Promise<void> => {
       try {
         await scanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 140 } },
-          async (decodedText) => {
-            if (detected) {
-              return;
-            }
-
-            const isbn = normalizeIsbn(decodedText);
-
-            if (!isbn) {
-              setMessage("ISBN / EAN-13 を読み取ってください。");
-              return;
-            }
-
-            detected = true;
-            setMessage(`ISBN ${isbn} を検出しました。判定画面へ移動します...`);
-            await scanner.stop();
-            if (active) {
-              navigate(`/result/${isbn}`);
-            }
+          {
+            facingMode: { exact: "environment" },
+            aspectRatio: 1.7777778,
           },
+          {
+            fps: 15,
+            disableFlip: true,
+            qrbox: (viewfinderWidth, viewfinderHeight) => ({
+              width: Math.floor(Math.min(viewfinderWidth * 0.92, 420)),
+              height: Math.floor(Math.max(140, Math.min(viewfinderHeight * 0.28, 220))),
+            }),
+          },
+          onDetected,
           () => undefined,
         );
         started = true;
-      } catch (_error) {
-        setMessage("カメラを利用できません。ブラウザ権限を確認してください。");
+      } catch {
+        try {
+          await scanner.start(
+            { facingMode: "environment" },
+            {
+              fps: 12,
+              disableFlip: true,
+              qrbox: { width: 320, height: 180 },
+            },
+            onDetected,
+            () => undefined,
+          );
+          started = true;
+          setMessage("バーコードを明るい場所で、少し離して固定してください。");
+        } catch {
+          setMessage("カメラを利用できません。ブラウザ権限を確認してください。");
+        }
       }
     };
 
@@ -327,6 +366,11 @@ function ScanPage() {
       <main className="stack">
         <section className="card">
           <p>{message}</p>
+          <ul className="hint-list">
+            <li>裏表紙の ISBN バーコードを横向きのまま枠に合わせてください。</li>
+            <li>近づけすぎるとピントが合わないので、少し離した方が読みやすいです。</li>
+            <li>影が入らない明るい場所で固定すると反応しやすくなります。</li>
+          </ul>
           <div id="scanner" className="scanner-box" />
         </section>
       </main>
@@ -568,7 +612,7 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
     try {
       await deleteBook(accessToken, isbn);
       navigate("/books", { replace: true });
-    } catch (_error) {
+    } catch {
       setMessage("削除に失敗しました。");
     }
   };

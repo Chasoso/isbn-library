@@ -195,6 +195,12 @@ input {
   border-radius: 16px;
 }
 
+.hint-list {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: #5f6e7f;
+}
+
 .status-card.registered {
   border-left: 8px solid #b91c1c;
 }
