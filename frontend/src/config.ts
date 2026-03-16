@@ -15,6 +15,10 @@ export const config = {
     import.meta.env.VITE_COGNITO_AUTHORITY,
     "VITE_COGNITO_AUTHORITY",
   ),
+  cognitoHostedUiDomain: required(
+    import.meta.env.VITE_COGNITO_HOSTED_UI_DOMAIN,
+    "VITE_COGNITO_HOSTED_UI_DOMAIN",
+  ).replace(/\/+$/, ""),
   cognitoClientId: required(
     import.meta.env.VITE_COGNITO_CLIENT_ID,
     "VITE_COGNITO_CLIENT_ID",

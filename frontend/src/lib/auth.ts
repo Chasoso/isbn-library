@@ -21,5 +21,11 @@ export const handleSignInCallback = async (): Promise<void> => {
 };
 
 export const signOut = async (): Promise<void> => {
-  await userManager.signoutRedirect();
+  await userManager.removeUser();
+
+  const logoutUrl = new URL(`${config.cognitoHostedUiDomain}/logout`);
+  logoutUrl.searchParams.set("client_id", config.cognitoClientId);
+  logoutUrl.searchParams.set("logout_uri", config.logoutRedirectUri);
+
+  window.location.assign(logoutUrl.toString());
 };

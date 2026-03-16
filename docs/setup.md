@@ -14,6 +14,7 @@
 
 - `VITE_API_BASE_URL`
 - `VITE_COGNITO_AUTHORITY`
+- `VITE_COGNITO_HOSTED_UI_DOMAIN`
 - `VITE_COGNITO_CLIENT_ID`
 - `VITE_COGNITO_REDIRECT_URI`
 - `VITE_COGNITO_LOGOUT_REDIRECT_URI`
@@ -28,6 +29,11 @@
 
 - 例: `https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_xxxxxxxx`
 - CloudFormation Output では `JwtIssuer` を使います
+
+`VITE_COGNITO_HOSTED_UI_DOMAIN` には Hosted UI ドメインを設定してください。
+
+- 例: `https://isbn-library-dev.auth.ap-northeast-1.amazoncognito.com`
+- CloudFormation Output では `CognitoDomain` を使います
 
 ## 3. CDK デプロイ用環境変数
 

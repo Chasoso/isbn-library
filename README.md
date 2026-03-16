@@ -60,6 +60,11 @@ GitHub Actions で `main` への push 時に `frontend build -> CDK deploy -> Am
 - 正しい例: `https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_xxxxxxxx`
 - 誤った例: `https://isbn-library-dev.auth.ap-northeast-1.amazoncognito.com`
 
+一方でログアウト用には Hosted UI ドメインも必要です。
+
+- `VITE_COGNITO_HOSTED_UI_DOMAIN`
+- 例: `https://isbn-library-dev.auth.ap-northeast-1.amazoncognito.com`
+
 ## Amplify Hosting メモ
 
 Amplify Hosting の Basic 認証はアプリ外設定です。本リポジトリでは実装していません。必要であれば Amplify Hosting 側のアクセス制御設定で保護してください。
