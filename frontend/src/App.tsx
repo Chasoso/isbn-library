@@ -1,5 +1,12 @@
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
-import { useEffect, useMemo, useState } from "react";
+import { BrowserMultiFormatReader } from "@zxing/browser";
+import {
+  BarcodeFormat,
+  DecodeHintType,
+  NotFoundException,
+  ChecksumException,
+  FormatException,
+} from "@zxing/library";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
   Navigate,
@@ -9,11 +16,10 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+import { categories, type BookFormat, bookFormats, type Category } from "./catalog";
 import { signIn, signOut, userManager, handleSignInCallback } from "./lib/auth";
 import { ApiError, createBook, deleteBook, getBook, getBooks, lookupBook } from "./lib/api";
-import { bookFormats, categories } from "./catalog";
 import { normalizeIsbn } from "./lib/isbn";
-import type { BookFormat, Category } from "./catalog";
 import type { AuthState, Book, BookLookupResult } from "./types";
 
 const initialAuthState: AuthState = {
@@ -118,11 +124,11 @@ function ProtectedLayout({
 
 function Layout({
   title,
-  email,
+  subtitle,
   children,
 }: {
   title: string;
-  email?: string | null;
+  subtitle?: string | null;
   children: JSX.Element | JSX.Element[];
 }) {
   return (
@@ -131,7 +137,7 @@ function Layout({
         <div>
           <p className="eyebrow">ISBN DUPLICATE CHECK</p>
           <h1>{title}</h1>
-          {email ? <p className="muted">{email}</p> : null}
+          {subtitle ? <p className="muted">{subtitle}</p> : null}
         </div>
         <nav className="top-nav">
           <Link to="/">ホーム</Link>
@@ -209,7 +215,7 @@ function HomePage({ authState }: { authState: AuthState }) {
   }, [authState.accessToken]);
 
   return (
-    <Layout title="ホーム" email={authState.name}>
+    <Layout title="ホーム" subtitle={authState.name}>
       <main className="stack">
         <section className="hero-card">
           <p className="hero-label">重複購入をその場で防ぐ</p>
@@ -259,6 +265,9 @@ function HomePage({ authState }: { authState: AuthState }) {
                 <div>
                   <strong>{book.title}</strong>
                   <p>{book.author || "著者不明"}</p>
+                  <p className="muted">
+                    {book.bookFormat} / {book.category}
+                  </p>
                   <p className="muted">{book.isbn}</p>
                 </div>
               </Link>
@@ -272,93 +281,153 @@ function HomePage({ authState }: { authState: AuthState }) {
 
 function ScanPage() {
   const navigate = useNavigate();
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const controlsRef = useRef<{ stop: () => void } | null>(null);
   const [message, setMessage] = useState(
     "カメラを準備しています。バーコードを枠いっぱいに映してください。",
   );
 
   useEffect(() => {
-    const elementId = "scanner";
-    const scanner = new Html5Qrcode(elementId, {
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E,
-      ],
-      experimentalFeatures: {
-        useBarCodeDetectorIfSupported: true,
-      },
-      verbose: false,
+    const hints = new Map();
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+    ]);
+    hints.set(DecodeHintType.TRY_HARDER, true);
+
+    const reader = new BrowserMultiFormatReader(hints, {
+      delayBetweenScanAttempts: 20,
+      delayBetweenScanSuccess: 500,
     });
+
     let active = true;
     let detected = false;
-    let started = false;
 
-    const onDetected = async (decodedText: string): Promise<void> => {
+    const onDetected = async (text: string): Promise<void> => {
       if (detected) {
         return;
       }
 
-      const isbn = normalizeIsbn(decodedText);
+      const isbn = normalizeIsbn(text);
       if (!isbn) {
-        setMessage("ISBN バーコードを枠内にまっすぐ映してください。");
+        setMessage("ISBN バーコードを枠内に水平に映してください。");
         return;
       }
 
       detected = true;
+      controlsRef.current?.stop();
       setMessage(`ISBN ${isbn} を検出しました。判定画面へ移動します...`);
-      try {
-        await scanner.stop();
-      } catch {
-        // Ignore stop errors during route transition.
-      }
       if (active) {
         navigate(`/result/${isbn}`);
       }
     };
 
-    const start = async (): Promise<void> => {
-      try {
-        const cameras = await Html5Qrcode.getCameras();
+    const applyVideoTrackTuning = async (): Promise<void> => {
+      const track = videoRef.current?.srcObject instanceof MediaStream
+        ? videoRef.current.srcObject.getVideoTracks()[0]
+        : null;
 
-        if (!cameras.length) {
+      if (!track) {
+        return;
+      }
+
+      const capabilities = track.getCapabilities?.() as Record<string, unknown> | undefined;
+      const advanced: Record<string, unknown> = {};
+
+      const focusModes = capabilities?.focusMode as string[] | undefined;
+      if (focusModes?.includes("continuous")) {
+        advanced.focusMode = "continuous";
+      }
+
+      const exposureModes = capabilities?.exposureMode as string[] | undefined;
+      if (exposureModes?.includes("continuous")) {
+        advanced.exposureMode = "continuous";
+      }
+
+      const whiteBalanceModes = capabilities?.whiteBalanceMode as string[] | undefined;
+      if (whiteBalanceModes?.includes("continuous")) {
+        advanced.whiteBalanceMode = "continuous";
+      }
+
+      const zoom = capabilities?.zoom as { max?: number } | undefined;
+      if (zoom?.max && zoom.max >= 2) {
+        advanced.zoom = Math.min(2, zoom.max);
+      }
+
+      if (Object.keys(advanced).length > 0) {
+        await track
+          .applyConstraints({ advanced: [advanced as MediaTrackConstraintSet] })
+          .catch(() => undefined);
+      }
+    };
+
+    const start = async (): Promise<void> => {
+      if (!videoRef.current) {
+        setMessage("スキャン画面の初期化に失敗しました。");
+        return;
+      }
+
+      try {
+        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+        const preferredDevice =
+          devices.find((device) => /back|rear|environment|背面/i.test(device.label)) ??
+          devices[0];
+
+        if (!preferredDevice) {
           setMessage("利用可能なカメラが見つかりません。");
           return;
         }
 
-        const preferredCamera =
-          cameras.find((camera) =>
-            /back|rear|environment|背面/i.test(camera.label),
-          ) ?? cameras[0];
-
-        await scanner.start(
-          preferredCamera.id,
+        const controls = await reader.decodeFromConstraints(
           {
-            fps: 15,
-            disableFlip: true,
-            qrbox: (viewfinderWidth, viewfinderHeight) => ({
-              width: Math.floor(Math.min(viewfinderWidth * 0.92, 420)),
-              height: Math.floor(Math.max(140, Math.min(viewfinderHeight * 0.28, 220))),
-            }),
-            aspectRatio: 1.7777778,
+            audio: false,
+            video: {
+              deviceId: { exact: preferredDevice.deviceId },
+              facingMode: "environment",
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+              aspectRatio: { ideal: 1.7777778 },
+            },
           },
-          onDetected,
-          () => undefined,
+          videoRef.current,
+          (result, error) => {
+            if (result) {
+              void onDetected(result.getText());
+              return;
+            }
+
+            if (
+              error &&
+              !(
+                error instanceof NotFoundException ||
+                error instanceof ChecksumException ||
+                error instanceof FormatException
+              )
+            ) {
+              setMessage(`読み取りに失敗しました: ${error.message}`);
+            }
+          },
         );
 
-        started = true;
-        setMessage("バーコードを横向きのまま枠いっぱいに映してください。");
+        controlsRef.current = controls;
+        await applyVideoTrackTuning();
+        setMessage("バーコードを横向きのまま枠いっぱいに映し、少し離して固定してください。");
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
+
         if (/Permission|denied|NotAllowed/i.test(detail)) {
           setMessage("カメラ権限が拒否されています。ブラウザのカメラ許可を確認してください。");
           return;
         }
+
         if (/secure|https|origin/i.test(detail)) {
           setMessage("カメラは HTTPS または localhost でのみ利用できます。");
           return;
         }
-        setMessage(`カメラを利用できません: ${detail}`);
+
+        setMessage(`カメラを起動できませんでした: ${detail}`);
       }
     };
 
@@ -366,14 +435,8 @@ function ScanPage() {
 
     return () => {
       active = false;
-      if (started) {
-        void scanner.stop().catch(() => undefined);
-      }
-      try {
-        scanner.clear();
-      } catch {
-        // Ignore cleanup errors from html5-qrcode on unmount.
-      }
+      controlsRef.current?.stop();
+      controlsRef.current = null;
     };
   }, [navigate]);
 
@@ -383,11 +446,16 @@ function ScanPage() {
         <section className="card">
           <p>{message}</p>
           <ul className="hint-list">
-            <li>裏表紙の ISBN バーコードを横向きのまま枠に合わせてください。</li>
-            <li>近づけすぎるとピントが合わないので、少し離した方が読みやすいです。</li>
-            <li>影が入らない明るい場所で固定すると反応しやすくなります。</li>
+            <li>ISBN バーコードを横向きのままガイド枠に合わせてください。</li>
+            <li>近づけすぎるとピントが外れるので、少し離して固定すると読み取りやすいです。</li>
+            <li>明るい場所で、影や反射が入らない角度にすると精度が上がります。</li>
           </ul>
-          <div id="scanner" className="scanner-box" />
+          <div className="scanner-shell">
+            <video ref={videoRef} className="scanner-video" muted playsInline autoPlay />
+            <div className="scanner-overlay" aria-hidden="true">
+              <div className="scanner-target" />
+            </div>
+          </div>
         </section>
       </main>
     </Layout>
@@ -431,6 +499,8 @@ function ResultPage({ accessToken }: { accessToken: string }) {
           if (lookupError instanceof ApiError && lookupError.status === 404) {
             setLookupFailed(true);
             setBook(null);
+          } else if (lookupError instanceof ApiError && lookupError.status === 503) {
+            setMessage("書誌情報取得が混み合っています。少し待って再試行してください。");
           } else {
             setMessage("書誌情報の取得に失敗しました。");
           }
@@ -568,9 +638,10 @@ function BooksPage({ accessToken }: { accessToken: string }) {
   const [searchText, setSearchText] = useState("");
   const [bookFormatFilter, setBookFormatFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const query = new URLSearchParams(location.search).get("q") ?? "";
-  const bookFormat = new URLSearchParams(location.search).get("bookFormat") ?? "";
-  const category = new URLSearchParams(location.search).get("category") ?? "";
+  const params = new URLSearchParams(location.search);
+  const query = params.get("q") ?? "";
+  const bookFormat = params.get("bookFormat") ?? "";
+  const category = params.get("category") ?? "";
 
   useEffect(() => {
     setSearchText(query);
@@ -604,17 +675,17 @@ function BooksPage({ accessToken }: { accessToken: string }) {
             className="search-row"
             onSubmit={(event) => {
               event.preventDefault();
-              const params = new URLSearchParams();
+              const nextParams = new URLSearchParams();
               if (searchText.trim()) {
-                params.set("q", searchText.trim());
+                nextParams.set("q", searchText.trim());
               }
               if (bookFormatFilter) {
-                params.set("bookFormat", bookFormatFilter);
+                nextParams.set("bookFormat", bookFormatFilter);
               }
               if (categoryFilter) {
-                params.set("category", categoryFilter);
+                nextParams.set("category", categoryFilter);
               }
-              navigate(`/books${params.toString() ? `?${params.toString()}` : ""}`);
+              navigate(`/books${nextParams.toString() ? `?${nextParams.toString()}` : ""}`);
             }}
           >
             <input
