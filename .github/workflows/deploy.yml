@@ -100,9 +100,26 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      - name: Check existing Amplify jobs
+        id: amplify-jobs
+        run: |
+          COUNT=$(aws amplify list-jobs \
+            --app-id "${{ vars.AMPLIFY_APP_ID }}" \
+            --branch-name "${{ vars.AMPLIFY_BRANCH_NAME }}" \
+            --max-items 25 \
+            --query "length(jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'])" \
+            --output text)
+          echo "active_jobs=$COUNT" >> "$GITHUB_OUTPUT"
+
       - name: Trigger Amplify deployment
+        if: ${{ steps.amplify-jobs.outputs.active_jobs == '0' }}
         run: >
           aws amplify start-job
           --app-id "${{ vars.AMPLIFY_APP_ID }}"
           --branch-name "${{ vars.AMPLIFY_BRANCH_NAME }}"
           --job-type RELEASE
+
+      - name: Skip Amplify deployment because a job is already active
+        if: ${{ steps.amplify-jobs.outputs.active_jobs != '0' }}
+        run: |
+          echo "Amplify branch already has an active job. Skipping start-job."
