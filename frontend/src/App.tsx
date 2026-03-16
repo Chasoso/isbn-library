@@ -537,14 +537,21 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     const load = async (): Promise<void> => {
       try {
         const result = await getBook(accessToken, isbn);
         setBook(result);
-      } catch (_error) {
-        setMessage("書籍情報の取得に失敗しました。");
+        setNotFound(false);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+          setNotFound(true);
+          setMessage("対象の書籍は登録されていません。");
+        } else {
+          setMessage("書籍情報の取得に失敗しました。");
+        }
       } finally {
         setLoading(false);
       }
@@ -572,6 +579,11 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
         <section className="card">
           {loading ? <p>読み込み中...</p> : null}
           {message ? <p>{message}</p> : null}
+          {notFound ? (
+            <p>
+              <Link to="/books">蔵書一覧へ戻る</Link>
+            </p>
+          ) : null}
           {book ? (
             <div className="detail-grid">
               {book.coverImageUrl ? (
