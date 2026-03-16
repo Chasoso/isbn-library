@@ -271,7 +271,7 @@ function HomePage({ authState }: { authState: AuthState }) {
 function ScanPage() {
   const navigate = useNavigate();
   const [message, setMessage] = useState(
-    "バーコードを枠いっぱいに映し、10cm ほど離して固定してください。",
+    "カメラを準備しています。バーコードを枠いっぱいに映してください。",
   );
 
   useEffect(() => {
@@ -313,11 +313,20 @@ function ScanPage() {
 
     const start = async (): Promise<void> => {
       try {
+        const cameras = await Html5Qrcode.getCameras();
+
+        if (!cameras.length) {
+          setMessage("利用可能なカメラが見つかりません。");
+          return;
+        }
+
+        const preferredCamera =
+          cameras.find((camera) =>
+            /back|rear|environment|背面/i.test(camera.label),
+          ) ?? cameras[0];
+
         await scanner.start(
-          {
-            facingMode: { exact: "environment" },
-            aspectRatio: 1.7777778,
-          },
+          preferredCamera.id,
           {
             fps: 15,
             disableFlip: true,
@@ -325,28 +334,25 @@ function ScanPage() {
               width: Math.floor(Math.min(viewfinderWidth * 0.92, 420)),
               height: Math.floor(Math.max(140, Math.min(viewfinderHeight * 0.28, 220))),
             }),
+            aspectRatio: 1.7777778,
           },
           onDetected,
           () => undefined,
         );
+
         started = true;
-      } catch {
-        try {
-          await scanner.start(
-            { facingMode: "environment" },
-            {
-              fps: 12,
-              disableFlip: true,
-              qrbox: { width: 320, height: 180 },
-            },
-            onDetected,
-            () => undefined,
-          );
-          started = true;
-          setMessage("バーコードを明るい場所で、少し離して固定してください。");
-        } catch {
-          setMessage("カメラを利用できません。ブラウザ権限を確認してください。");
+        setMessage("バーコードを横向きのまま枠いっぱいに映してください。");
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        if (/Permission|denied|NotAllowed/i.test(detail)) {
+          setMessage("カメラ権限が拒否されています。ブラウザのカメラ許可を確認してください。");
+          return;
         }
+        if (/secure|https|origin/i.test(detail)) {
+          setMessage("カメラは HTTPS または localhost でのみ利用できます。");
+          return;
+        }
+        setMessage(`カメラを利用できません: ${detail}`);
       }
     };
 
