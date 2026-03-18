@@ -26,11 +26,11 @@ class AppErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="page-shell">
-          <div className="card">
-            <h1>ISBN Library</h1>
-            <p>画面表示中にエラーが発生しました。</p>
-            <p className="muted">{this.state.message}</p>
+        <div className="app-shell loading-screen">
+          <div className="loading-panel">
+            <p className="kicker">ISBN LIBRARY</p>
+            <h1>画面表示中にエラーが発生しました</h1>
+            <p className="subtle">{this.state.message}</p>
           </div>
         </div>
       );

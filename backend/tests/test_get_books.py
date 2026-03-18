@@ -48,6 +48,35 @@ def test_get_books_filters_by_title_and_classifications(
     assert body["items"][0]["isbn"] == "9781111111111"
 
 
+def test_get_books_search_matches_author(lambda_event: dict[str, object]) -> None:
+    lambda_event["queryStringParameters"] = {"q": "suzuki"}
+    table = Mock()
+    table.query.return_value = {
+        "Items": [
+            {
+                "userId": "user-123",
+                "isbn": "9781111111111",
+                "title": "統計の本",
+                "author": "Taro Suzuki",
+                "createdAt": "2026-03-16T12:00:00+00:00",
+            },
+            {
+                "userId": "user-123",
+                "isbn": "9782222222222",
+                "title": "別の本",
+                "author": "Hanako Sato",
+                "createdAt": "2026-03-15T12:00:00+00:00",
+            },
+        ]
+    }
+
+    with patch.object(get_books_handler, "get_books_table", return_value=table):
+        status_code, body = parse_response(get_books_handler.handler(lambda_event, None))
+
+    assert status_code == 200
+    assert [item["isbn"] for item in body["items"]] == ["9781111111111"]
+
+
 def test_get_books_returns_sorted_items(lambda_event: dict[str, object]) -> None:
     table = Mock()
     table.query.return_value = {

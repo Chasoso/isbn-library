@@ -23,7 +23,10 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
         if query_text:
             items = [
-                item for item in items if query_text in item.get("title", "").lower()
+                item
+                for item in items
+                if query_text in item.get("title", "").lower()
+                or query_text in item.get("author", "").lower()
             ]
 
         if book_format:

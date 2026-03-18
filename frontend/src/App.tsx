@@ -1,14 +1,15 @@
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import {
   BarcodeFormat,
-  DecodeHintType,
-  NotFoundException,
   ChecksumException,
+  DecodeHintType,
   FormatException,
+  NotFoundException,
 } from "@zxing/library";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Link,
+  NavLink,
   Navigate,
   Route,
   Routes,
@@ -16,8 +17,8 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { categories, type BookFormat, bookFormats, type Category } from "./catalog";
-import { signIn, signOut, userManager, handleSignInCallback } from "./lib/auth";
+import { bookFormats, categories, type BookFormat, type Category } from "./catalog";
+import { handleSignInCallback, signIn, signOut, userManager } from "./lib/auth";
 import { ApiError, createBook, deleteBook, getBook, getBooks, lookupBook } from "./lib/api";
 import { normalizeIsbn } from "./lib/isbn";
 import type { AuthState, Book, BookLookupResult } from "./types";
@@ -29,6 +30,18 @@ const initialAuthState: AuthState = {
   name: null,
   loading: true,
 };
+
+const defaultBookFormat: BookFormat = "その他";
+const defaultCategory: Category = "その他";
+
+const sortOptions = [
+  { value: "newest", label: "登録日が新しい順" },
+  { value: "oldest", label: "登録日が古い順" },
+  { value: "title", label: "タイトル順" },
+  { value: "author", label: "著者順" },
+] as const;
+
+type SortOption = (typeof sortOptions)[number]["value"];
 
 function App() {
   const [authState, setAuthState] = useState<AuthState>(initialAuthState);
@@ -61,8 +74,12 @@ function App() {
 
   if (authState.loading) {
     return (
-      <div className="page-shell">
-        <p>認証状態を確認しています...</p>
+      <div className="app-shell loading-screen">
+        <div className="loading-panel">
+          <p className="kicker">ISBN LIBRARY</p>
+          <h1>蔵書を準備しています</h1>
+          <p className="subtle">認証状態を確認して、あなたの本棚を開いています。</p>
+        </div>
       </div>
     );
   }
@@ -79,12 +96,12 @@ function App() {
               <Route path="/scan" element={<ScanPage />} />
               <Route
                 path="/result/:isbn"
-                element={<ResultPage accessToken={authState.accessToken!} />}
+                element={<ResultPage accessToken={authState.accessToken ?? ""} />}
               />
-              <Route path="/books" element={<BooksPage accessToken={authState.accessToken!} />} />
+              <Route path="/books" element={<BooksPage accessToken={authState.accessToken ?? ""} />} />
               <Route
                 path="/books/:isbn"
-                element={<BookDetailPage accessToken={authState.accessToken!} />}
+                element={<BookDetailPage accessToken={authState.accessToken ?? ""} />}
               />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
@@ -100,18 +117,19 @@ function ProtectedLayout({
   children,
 }: {
   authState: AuthState;
-  children: JSX.Element;
+  children: ReactNode;
 }) {
   if (!authState.isAuthenticated) {
     return (
-      <div className="page-shell centered">
-        <div className="card">
-          <h1>ISBN Library</h1>
-          <p>このアプリは認証済みユーザーのみ利用できます。</p>
-          <p className="muted">
-            自己サインアップは無効です。管理者が作成した Cognito ユーザーでログインしてください。
+      <div className="app-shell auth-screen">
+        <div className="auth-card">
+          <p className="kicker">ISBN LIBRARY</p>
+          <h1>蔵書ダッシュボードへログイン</h1>
+          <p className="auth-copy">
+            このアプリは認証済みユーザーのみ利用できます。管理者が作成したアカウントで
+            ログインしてください。
           </p>
-          <button className="primary-button" onClick={() => void signIn()}>
+          <button className="primary-pill" onClick={() => void signIn()}>
             ログイン
           </button>
         </div>
@@ -119,36 +137,45 @@ function ProtectedLayout({
     );
   }
 
-  return children;
+  return <>{children}</>;
 }
 
-function Layout({
+function AppLayout({
   title,
   subtitle,
   children,
 }: {
   title: string;
   subtitle?: string | null;
-  children: JSX.Element | JSX.Element[];
+  children: ReactNode;
 }) {
+  const location = useLocation();
+  const hideFab = location.pathname === "/scan";
+
   return (
-    <div className="page-shell">
+    <div className="app-shell">
+      <div className="ambient ambient-left" aria-hidden="true" />
+      <div className="ambient ambient-right" aria-hidden="true" />
       <header className="app-header">
-        <div>
-          <p className="eyebrow">ISBN DUPLICATE CHECK</p>
-          <h1>{title}</h1>
-          {subtitle ? <p className="muted">{subtitle}</p> : null}
+        <div className="brand-block">
+          <p className="kicker">ISBN DUPLICATE CHECK</p>
+          <div className="title-row">
+            <div>
+              <h1>{title}</h1>
+              {subtitle ? <p className="subtle">{subtitle}</p> : null}
+            </div>
+          </div>
         </div>
-        <nav className="top-nav">
-          <Link to="/">ホーム</Link>
-          <Link to="/scan">スキャン</Link>
-          <Link to="/books">蔵書一覧</Link>
-          <button className="link-button" onClick={() => void signOut()}>
+        <nav className="nav-tabs" aria-label="メインメニュー">
+          <NavLink to="/">ホーム</NavLink>
+          <NavLink to="/books">蔵書一覧</NavLink>
+          <button className="ghost-link" onClick={() => void signOut()}>
             ログアウト
           </button>
         </nav>
       </header>
-      {children}
+      <main className="page-content">{children}</main>
+      {!hideFab ? <FloatingScanButton /> : null}
     </div>
   );
 }
@@ -184,10 +211,11 @@ function AuthCallbackPage({
   }, [navigate, onLoaded]);
 
   return (
-    <div className="page-shell centered">
-      <div className="card">
-        <h1>ログイン処理中</h1>
-        <p>{error ?? "Cognito からの応答を処理しています..."}</p>
+    <div className="app-shell loading-screen">
+      <div className="loading-panel">
+        <p className="kicker">COGNITO CALLBACK</p>
+        <h1>ログインを完了しています</h1>
+        <p className="subtle">{error ?? "認証情報を確認しています。少しだけお待ちください。"}</p>
       </div>
     </div>
   );
@@ -202,10 +230,8 @@ function HomePage({ authState }: { authState: AuthState }) {
   useEffect(() => {
     const load = async (): Promise<void> => {
       try {
-        const result = await getBooks(authState.accessToken!);
-        setBooks(
-          [...result.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5),
-        );
+        const result = await getBooks(authState.accessToken ?? "");
+        setBooks(sortBooks(result.items, "newest"));
       } finally {
         setLoading(false);
       }
@@ -214,68 +240,91 @@ function HomePage({ authState }: { authState: AuthState }) {
     void load();
   }, [authState.accessToken]);
 
+  const recentBooks = books.slice(0, 6);
+  const monthlyCount = books.filter((book) => isInCurrentMonth(book.createdAt)).length;
+  const lastAdded = books[0]?.createdAt ?? null;
+  const categoryCount = new Set(books.map((book) => book.category)).size;
+
   return (
-    <Layout title="ホーム" subtitle={authState.name}>
-      <main className="stack">
-        <section className="hero-card">
-          <p className="hero-label">重複購入をその場で防ぐ</p>
-          <h2>ISBN を読み取って、登録済みか即判定</h2>
-          <div className="hero-actions">
-            <Link className="primary-button" to="/scan">
-              スキャン開始
-            </Link>
-            <Link className="secondary-button" to="/books">
-              蔵書一覧を見る
-            </Link>
-          </div>
-        </section>
+    <AppLayout
+      title="ホーム"
+      subtitle={authState.name ? `${authState.name}さんの蔵書ダッシュボード` : null}
+    >
+      <section className="dashboard-hero panel">
+        <div className="hero-copy">
+          <p className="section-label">あなたの蔵書</p>
+          <h2>本棚の状態をひと目で把握</h2>
+          <p className="subtle">
+            重複購入の確認だけでなく、最近追加した本や分類の広がりまで、今の蔵書を気持ちよく眺められるホームです。
+          </p>
+        </div>
+        <SummaryCards
+          items={[
+            {
+              label: "総冊数",
+              value: `${books.length}`,
+              tone: "teal",
+              caption: books.length > 0 ? "現在管理中の蔵書" : "まずは最初の1冊を登録",
+            },
+            {
+              label: "今月の追加",
+              value: `+${monthlyCount}`,
+              tone: "sky",
+              caption: monthlyCount > 0 ? "最近の登録ペース" : "今月の追加はまだありません",
+            },
+            {
+              label: "最終登録",
+              value: lastAdded ? formatRelativeTime(lastAdded) : "未登録",
+              tone: "amber",
+              caption: lastAdded ? formatDateTime(lastAdded) : `${categoryCount} カテゴリ管理中`,
+            },
+          ]}
+        />
+      </section>
 
-        <section className="card">
-          <h3>タイトル検索</h3>
-          <form
-            className="search-row"
-            onSubmit={(event) => {
-              event.preventDefault();
-              navigate(`/books?q=${encodeURIComponent(searchText.trim())}`);
-            }}
-          >
-            <input
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-              placeholder="タイトルを入力"
-            />
-            <button className="primary-button" type="submit">
-              検索
-            </button>
-          </form>
-        </section>
-
-        <section className="card">
-          <h3>最近登録した本</h3>
-          {loading ? <p>読み込み中...</p> : null}
-          {!loading && books.length === 0 ? <p>まだ本が登録されていません。</p> : null}
-          <div className="book-list">
-            {books.map((book) => (
-              <Link key={book.isbn} to={`/books/${book.isbn}`} className="book-row">
-                {book.coverImageUrl ? (
-                  <img src={book.coverImageUrl} alt={book.title} />
-                ) : (
-                  <div className="cover-placeholder">NO IMAGE</div>
-                )}
-                <div>
-                  <strong>{book.title}</strong>
-                  <p>{book.author || "著者不明"}</p>
-                  <p className="muted">
-                    {book.bookFormat} / {book.category}
-                  </p>
-                  <p className="muted">{book.isbn}</p>
-                </div>
-              </Link>
-            ))}
+      <section className="panel search-panel">
+        <div className="section-heading">
+          <div>
+            <p className="section-label">検索</p>
+            <h3>次に読みたい1冊をすぐ探す</h3>
           </div>
-        </section>
-      </main>
-    </Layout>
+        </div>
+        <SearchBar
+          value={searchText}
+          onChange={setSearchText}
+          placeholder="タイトル・著者で検索"
+          submitLabel="検索"
+          onSubmit={() => {
+            const nextQuery = searchText.trim();
+            navigate(`/books${nextQuery ? `?q=${encodeURIComponent(nextQuery)}` : ""}`);
+          }}
+        />
+      </section>
+
+      <section className="panel">
+        <div className="section-heading">
+          <div>
+            <p className="section-label">最近追加した本</p>
+            <h3>新しく棚に並んだ本</h3>
+          </div>
+          <Link className="text-link" to="/books">
+            蔵書一覧を見る
+          </Link>
+        </div>
+        {loading ? <p className="empty-copy">蔵書を読み込んでいます...</p> : null}
+        {!loading && recentBooks.length === 0 ? (
+          <div className="empty-state">
+            <p>まだ本が登録されていません。</p>
+            <p className="subtle">右下の「スキャンする」から、最初の1冊を登録できます。</p>
+          </div>
+        ) : null}
+        <div className="recent-grid">
+          {recentBooks.map((book) => (
+            <RecentBookCard key={book.isbn} book={book} />
+          ))}
+        </div>
+      </section>
+    </AppLayout>
   );
 }
 
@@ -284,7 +333,7 @@ function ScanPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
   const [message, setMessage] = useState(
-    "カメラを準備しています。バーコードを枠いっぱいに映してください。",
+    "裏表紙の ISBN バーコードを枠に合わせてください。読み取り後は自動で判定画面へ移動します。",
   );
 
   useEffect(() => {
@@ -312,22 +361,23 @@ function ScanPage() {
 
       const isbn = normalizeIsbn(text);
       if (!isbn) {
-        setMessage("ISBN バーコードを枠内に水平に映してください。");
+        setMessage("ISBN バーコードを判定できませんでした。少し距離をとって再度お試しください。");
         return;
       }
 
       detected = true;
       controlsRef.current?.stop();
-      setMessage(`ISBN ${isbn} を検出しました。判定画面へ移動します...`);
+      setMessage(`ISBN ${isbn} を読み取りました。判定画面へ移動しています...`);
       if (active) {
         navigate(`/result/${isbn}`);
       }
     };
 
     const applyVideoTrackTuning = async (): Promise<void> => {
-      const track = videoRef.current?.srcObject instanceof MediaStream
-        ? videoRef.current.srcObject.getVideoTracks()[0]
-        : null;
+      const track =
+        videoRef.current?.srcObject instanceof MediaStream
+          ? videoRef.current.srcObject.getVideoTracks()[0]
+          : null;
 
       if (!track) {
         return;
@@ -344,11 +394,6 @@ function ScanPage() {
       const exposureModes = capabilities?.exposureMode as string[] | undefined;
       if (exposureModes?.includes("continuous")) {
         advanced.exposureMode = "continuous";
-      }
-
-      const whiteBalanceModes = capabilities?.whiteBalanceMode as string[] | undefined;
-      if (whiteBalanceModes?.includes("continuous")) {
-        advanced.whiteBalanceMode = "continuous";
       }
 
       const zoom = capabilities?.zoom as { max?: number } | undefined;
@@ -406,19 +451,19 @@ function ScanPage() {
                 error instanceof FormatException
               )
             ) {
-              setMessage(`読み取りに失敗しました: ${error.message}`);
+              setMessage(`読み取り中にエラーが発生しました: ${error.message}`);
             }
           },
         );
 
         controlsRef.current = controls;
         await applyVideoTrackTuning();
-        setMessage("バーコードを横向きのまま枠いっぱいに映し、少し離して固定してください。");
+        setMessage("バーコードを枠の中央に合わせてください。少し離して固定すると読み取りやすくなります。");
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
 
         if (/Permission|denied|NotAllowed/i.test(detail)) {
-          setMessage("カメラ権限が拒否されています。ブラウザのカメラ許可を確認してください。");
+          setMessage("カメラ権限が拒否されています。ブラウザ設定でカメラ利用を許可してください。");
           return;
         }
 
@@ -427,7 +472,7 @@ function ScanPage() {
           return;
         }
 
-        setMessage(`カメラを起動できませんでした: ${detail}`);
+        setMessage(`カメラを利用できません: ${detail}`);
       }
     };
 
@@ -441,24 +486,28 @@ function ScanPage() {
   }, [navigate]);
 
   return (
-    <Layout title="スキャン">
-      <main className="stack">
-        <section className="card">
-          <p>{message}</p>
-          <ul className="hint-list">
-            <li>ISBN バーコードを横向きのままガイド枠に合わせてください。</li>
-            <li>近づけすぎるとピントが外れるので、少し離して固定すると読み取りやすいです。</li>
-            <li>明るい場所で、影や反射が入らない角度にすると精度が上がります。</li>
-          </ul>
-          <div className="scanner-shell">
-            <video ref={videoRef} className="scanner-video" muted playsInline autoPlay />
-            <div className="scanner-overlay" aria-hidden="true">
-              <div className="scanner-target" />
-            </div>
+    <AppLayout title="スキャン" subtitle="いつでも登録できる常設アクション">
+      <section className="panel scan-panel">
+        <div className="section-heading">
+          <div>
+            <p className="section-label">ISBN スキャン</p>
+            <h3>重複購入をその場で確認</h3>
           </div>
-        </section>
-      </main>
-    </Layout>
+        </div>
+        <p className="subtle">{message}</p>
+        <ul className="scan-tips">
+          <li>裏表紙の ISBN バーコードを横向きのまま枠に合わせてください。</li>
+          <li>近づけすぎるとピントが合いにくいので、少し離して固定すると安定します。</li>
+          <li>影が入らない明るい場所だと反応しやすくなります。</li>
+        </ul>
+        <div className="scanner-shell">
+          <video ref={videoRef} className="scanner-video" muted playsInline autoPlay />
+          <div className="scanner-overlay" aria-hidden="true">
+            <div className="scanner-target" />
+          </div>
+        </div>
+      </section>
+    </AppLayout>
   );
 }
 
@@ -470,8 +519,8 @@ function ResultPage({ accessToken }: { accessToken: string }) {
   const [lookupFailed, setLookupFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
-  const [bookFormat, setBookFormat] = useState<BookFormat>("その他");
-  const [category, setCategory] = useState<Category>("その他");
+  const [bookFormat, setBookFormat] = useState<BookFormat>(defaultBookFormat);
+  const [category, setCategory] = useState<Category>(defaultCategory);
 
   useEffect(() => {
     const load = async (): Promise<void> => {
@@ -485,7 +534,7 @@ function ResultPage({ accessToken }: { accessToken: string }) {
         setBook(existing);
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 404) {
-          setMessage("登録状況の確認に失敗しました。");
+          setMessage("書籍状態の確認に失敗しました。");
           setLoading(false);
           return;
         }
@@ -500,7 +549,7 @@ function ResultPage({ accessToken }: { accessToken: string }) {
             setLookupFailed(true);
             setBook(null);
           } else if (lookupError instanceof ApiError && lookupError.status === 503) {
-            setMessage("書誌情報取得が混み合っています。少し待って再試行してください。");
+            setMessage("書誌情報の取得が混み合っています。少し待ってから再試行してください。");
           } else {
             setMessage("書誌情報の取得に失敗しました。");
           }
@@ -513,10 +562,9 @@ function ResultPage({ accessToken }: { accessToken: string }) {
     void load();
   }, [accessToken, isbn]);
 
-  const statusText = useMemo(
-    () => (registered ? "この本はすでに登録されています" : "この本は未登録です"),
-    [registered],
-  );
+  const statusText = registered
+    ? "この本はすでに登録されています"
+    : "この本は未登録です";
 
   const handleCreate = async (): Promise<void> => {
     if (!book || registered) {
@@ -534,13 +582,13 @@ function ResultPage({ accessToken }: { accessToken: string }) {
         bookFormat,
         category,
       });
-      setMessage("登録しました。");
+      setMessage("蔵書に登録しました。");
       setRegistered(true);
       navigate(`/books/${isbn}`, { replace: true });
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
         setRegistered(true);
-        setMessage("すでに登録済みでした。");
+        setMessage("この本はすでに登録されています。");
       } else {
         setMessage("登録に失敗しました。");
       }
@@ -548,29 +596,30 @@ function ResultPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <Layout title="判定結果">
-      <main className="stack">
-        <section className={`card status-card ${registered ? "registered" : "unregistered"}`}>
-          <p className="muted">ISBN: {isbn}</p>
-          <h2>{loading ? "確認中..." : statusText}</h2>
-          {message ? <p>{message}</p> : null}
-        </section>
+    <AppLayout title="判定結果" subtitle={`ISBN ${isbn}`}>
+      <section className={`panel result-banner ${registered ? "is-registered" : "is-unregistered"}`}>
+        <p className="section-label">判定ステータス</p>
+        <h2>{loading ? "確認中..." : statusText}</h2>
+        {message ? <p className="subtle">{message}</p> : null}
+      </section>
 
-        <section className="card">
-          <h3>書誌情報</h3>
-          {loading ? <p>読み込み中...</p> : null}
-          {!loading && lookupFailed ? (
-            <p>Google Books API から書誌情報を取得できませんでした。</p>
-          ) : null}
-          {!loading && book ? (
+      <section className="panel detail-panel">
+        <div className="section-heading">
+          <div>
+            <p className="section-label">書誌情報</p>
+            <h3>登録前に内容を確認</h3>
+          </div>
+        </div>
+        {loading ? <p className="empty-copy">書誌情報を取得しています...</p> : null}
+        {!loading && lookupFailed ? (
+          <p className="empty-copy">Google Books API から書誌情報を取得できませんでした。</p>
+        ) : null}
+        {!loading && book ? (
+          <>
             <div className="detail-grid">
-              {book.coverImageUrl ? (
-                <img className="detail-cover" src={book.coverImageUrl} alt={book.title} />
-              ) : null}
-              <div>
-                <p>
-                  <strong>タイトル:</strong> {book.title || "-"}
-                </p>
+              <CoverArt book={book} large />
+              <div className="detail-copy">
+                <h2>{book.title || "タイトル未設定"}</h2>
                 <p>
                   <strong>著者:</strong> {book.author || "-"}
                 </p>
@@ -581,73 +630,78 @@ function ResultPage({ accessToken }: { accessToken: string }) {
                   <strong>出版日:</strong> {book.publishedDate || "-"}
                 </p>
                 <p>
-                  <strong>形態:</strong> {"bookFormat" in book ? book.bookFormat : bookFormat}
+                  <strong>分類:</strong> {"bookFormat" in book ? book.bookFormat : bookFormat}
                 </p>
                 <p>
-                  <strong>ジャンル:</strong> {"category" in book ? book.category : category}
+                  <strong>カテゴリ:</strong> {"category" in book ? book.category : category}
                 </p>
               </div>
             </div>
-          ) : null}
-          {!loading && !registered && book ? (
-            <div className="classification-grid">
-              <label>
-                <span>形態</span>
-                <select
-                  value={bookFormat}
-                  onChange={(event) => setBookFormat(event.target.value as BookFormat)}
-                >
-                  {bookFormats.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>ジャンル</span>
-                <select
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value as Category)}
-                >
-                  {categories.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          ) : null}
-          {!loading && !registered && book ? (
-            <button className="primary-button" onClick={() => void handleCreate()}>
-              この本を登録する
-            </button>
-          ) : null}
-        </section>
-      </main>
-    </Layout>
+            {!registered ? (
+              <>
+                <div className="classification-grid">
+                  <label>
+                    <span>形態</span>
+                    <select
+                      value={bookFormat}
+                      onChange={(event) => setBookFormat(event.target.value as BookFormat)}
+                    >
+                      {bookFormats.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>ジャンル</span>
+                    <select
+                      value={category}
+                      onChange={(event) => setCategory(event.target.value as Category)}
+                    >
+                      {categories.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <button className="primary-pill" onClick={() => void handleCreate()}>
+                  蔵書に登録する
+                </button>
+              </>
+            ) : null}
+          </>
+        ) : null}
+      </section>
+    </AppLayout>
   );
 }
 
 function BooksPage({ accessToken }: { accessToken: string }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchText, setSearchText] = useState("");
-  const [bookFormatFilter, setBookFormatFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
   const params = new URLSearchParams(location.search);
   const query = params.get("q") ?? "";
   const bookFormat = params.get("bookFormat") ?? "";
   const category = params.get("category") ?? "";
+  const sort = (params.get("sort") as SortOption | null) ?? "newest";
+
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState(query);
+  const [bookFormatFilter, setBookFormatFilter] = useState(bookFormat);
+  const [categoryFilter, setCategoryFilter] = useState(category);
+  const [sortValue, setSortValue] = useState<SortOption>(sort);
+  const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
 
   useEffect(() => {
     setSearchText(query);
     setBookFormatFilter(bookFormat);
     setCategoryFilter(category);
-  }, [query, bookFormat, category]);
+    setSortValue(sort);
+  }, [query, bookFormat, category, sort]);
 
   useEffect(() => {
     const load = async (): Promise<void> => {
@@ -658,96 +712,110 @@ function BooksPage({ accessToken }: { accessToken: string }) {
           bookFormat,
           category,
         });
-        setBooks(result.items);
+        setBooks(sortBooks(result.items, sort));
       } finally {
         setLoading(false);
       }
     };
 
     void load();
-  }, [accessToken, query, bookFormat, category]);
+  }, [accessToken, query, bookFormat, category, sort]);
+
+  const rows = chunkBooks(books, 5);
+
+  const applyFilters = (): void => {
+    const nextParams = new URLSearchParams();
+
+    if (searchText.trim()) {
+      nextParams.set("q", searchText.trim());
+    }
+    if (bookFormatFilter) {
+      nextParams.set("bookFormat", bookFormatFilter);
+    }
+    if (categoryFilter) {
+      nextParams.set("category", categoryFilter);
+    }
+    if (sortValue !== "newest") {
+      nextParams.set("sort", sortValue);
+    }
+
+    navigate(`/books${nextParams.toString() ? `?${nextParams.toString()}` : ""}`);
+  };
 
   return (
-    <Layout title="蔵書一覧">
-      <main className="stack">
-        <section className="card">
-          <form
-            className="search-row"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const nextParams = new URLSearchParams();
-              if (searchText.trim()) {
-                nextParams.set("q", searchText.trim());
-              }
-              if (bookFormatFilter) {
-                nextParams.set("bookFormat", bookFormatFilter);
-              }
-              if (categoryFilter) {
-                nextParams.set("category", categoryFilter);
-              }
-              navigate(`/books${nextParams.toString() ? `?${nextParams.toString()}` : ""}`);
-            }}
-          >
-            <input
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-              placeholder="タイトルで検索"
-            />
-            <select
-              value={bookFormatFilter}
-              onChange={(event) => setBookFormatFilter(event.target.value)}
-            >
-              <option value="">すべての形態</option>
-              {bookFormats.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+    <AppLayout title="蔵書一覧" subtitle="本棚を眺めるように管理する">
+      <section className="panel library-toolbar">
+        <div className="library-toolbar-main">
+          <div className="stat-chip">
+            <strong>{books.length}</strong>
+            <span>Books</span>
+          </div>
+          <SearchBar
+            value={searchText}
+            onChange={setSearchText}
+            placeholder="タイトル・著者で検索"
+            submitLabel="検索"
+            onSubmit={applyFilters}
+          />
+        </div>
+        <div className="toolbar-controls">
+          <label>
+            <span>並び替え</span>
+            <select value={sortValue} onChange={(event) => setSortValue(event.target.value as SortOption)}>
+              {sortOptions.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
                 </option>
               ))}
             </select>
-            <select
-              value={categoryFilter}
-              onChange={(event) => setCategoryFilter(event.target.value)}
-            >
-              <option value="">すべてのジャンル</option>
+          </label>
+          <label>
+            <span>カテゴリ</span>
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+              <option value="">すべて</option>
               {categories.map((item) => (
                 <option key={item} value={item}>
                   {item}
                 </option>
               ))}
             </select>
-            <button className="primary-button" type="submit">
-              検索
-            </button>
-          </form>
-          <p className="muted">
-            {query || bookFormat || category
-              ? `検索条件: ${query || "タイトル指定なし"} / ${bookFormat || "形態すべて"} / ${category || "ジャンルすべて"}`
-              : "全件表示"}
-          </p>
-          {loading ? <p>読み込み中...</p> : null}
-          {!loading && books.length === 0 ? <p>該当する書籍はありません。</p> : null}
-          <div className="book-list">
-            {books.map((book) => (
-              <Link key={book.isbn} className="book-row" to={`/books/${book.isbn}`}>
-                {book.coverImageUrl ? (
-                  <img src={book.coverImageUrl} alt={book.title} />
-                ) : (
-                  <div className="cover-placeholder">NO IMAGE</div>
-                )}
-                <div>
-                  <strong>{book.title}</strong>
-                  <p>{book.author || "著者不明"}</p>
-                  <p className="muted">
-                    {book.bookFormat} / {book.category}
-                  </p>
-                  <p className="muted">{book.isbn}</p>
-                </div>
-              </Link>
-            ))}
+          </label>
+          <label>
+            <span>形態</span>
+            <select value={bookFormatFilter} onChange={(event) => setBookFormatFilter(event.target.value)}>
+              <option value="">すべて</option>
+              {bookFormats.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="secondary-pill" onClick={applyFilters}>
+            絞り込む
+          </button>
+        </div>
+      </section>
+
+      <section className="bookshelf-section">
+        {loading ? <div className="panel empty-state">本棚を読み込んでいます...</div> : null}
+        {!loading && books.length === 0 ? (
+          <div className="panel empty-state">
+            <p>条件に合う蔵書はありません。</p>
+            <p className="subtle">検索語やフィルタを変更するか、右下のボタンから新しく登録してください。</p>
           </div>
-        </section>
-      </main>
-    </Layout>
+        ) : null}
+        {!loading &&
+          rows.map((row, index) => (
+            <BookshelfRow
+              key={`row-${index}`}
+              books={row}
+              selectedIsbn={selectedIsbn}
+              onSelect={setSelectedIsbn}
+            />
+          ))}
+      </section>
+    </AppLayout>
   );
 }
 
@@ -781,7 +849,7 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
   }, [accessToken, isbn]);
 
   const handleDelete = async (): Promise<void> => {
-    if (!window.confirm("この書籍を削除しますか？")) {
+    if (!window.confirm("この書籍を蔵書から削除しますか？")) {
       return;
     }
 
@@ -794,24 +862,26 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <Layout title="書籍詳細">
-      <main className="stack">
-        <section className="card">
-          {loading ? <p>読み込み中...</p> : null}
-          {message ? <p>{message}</p> : null}
-          {notFound ? (
-            <p>
-              <Link to="/books">蔵書一覧へ戻る</Link>
-            </p>
-          ) : null}
-          {book ? (
+    <AppLayout title="書籍詳細" subtitle={book?.title ?? "蔵書の詳細を見る"}>
+      <section className="panel detail-panel">
+        {loading ? <p className="empty-copy">書籍情報を読み込んでいます...</p> : null}
+        {message ? <p className="subtle">{message}</p> : null}
+        {notFound ? (
+          <p>
+            <Link className="text-link" to="/books">
+              蔵書一覧へ戻る
+            </Link>
+          </p>
+        ) : null}
+        {book ? (
+          <>
             <div className="detail-grid">
-              {book.coverImageUrl ? (
-                <img className="detail-cover" src={book.coverImageUrl} alt={book.title} />
-              ) : (
-                <div className="cover-placeholder large">NO IMAGE</div>
-              )}
-              <div>
+              <CoverArt book={book} large />
+              <div className="detail-copy">
+                <div className="chip-row">
+                  <TagChip>{book.category}</TagChip>
+                  <TagChip tone="outline">{book.bookFormat}</TagChip>
+                </div>
                 <h2>{book.title}</h2>
                 <p>
                   <strong>著者:</strong> {book.author || "-"}
@@ -826,26 +896,294 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
                   <strong>ISBN:</strong> {book.isbn}
                 </p>
                 <p>
-                  <strong>形態:</strong> {book.bookFormat}
-                </p>
-                <p>
-                  <strong>ジャンル:</strong> {book.category}
-                </p>
-                <p>
-                  <strong>登録日時:</strong> {book.createdAt}
+                  <strong>登録日時:</strong> {formatDateTime(book.createdAt)}
                 </p>
               </div>
             </div>
-          ) : null}
-          {book ? (
-            <button className="danger-button" onClick={() => void handleDelete()}>
+            <button className="danger-pill" onClick={() => void handleDelete()}>
               削除する
             </button>
-          ) : null}
-        </section>
-      </main>
-    </Layout>
+          </>
+        ) : null}
+      </section>
+    </AppLayout>
   );
+}
+
+function SummaryCards({
+  items,
+}: {
+  items: Array<{ label: string; value: string; caption: string; tone: "teal" | "sky" | "amber" }>;
+}) {
+  return (
+    <div className="summary-grid">
+      {items.map((item) => (
+        <article key={item.label} className={`summary-card tone-${item.tone}`}>
+          <p>{item.label}</p>
+          <strong>{item.value}</strong>
+          <span>{item.caption}</span>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function SearchBar({
+  value,
+  onChange,
+  onSubmit,
+  placeholder,
+  submitLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  placeholder: string;
+  submitLabel: string;
+}) {
+  return (
+    <form
+      className="search-bar"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      <SearchIcon />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        aria-label={placeholder}
+      />
+      <button type="submit" className="inline-search-action">
+        {submitLabel}
+      </button>
+    </form>
+  );
+}
+
+function RecentBookCard({ book }: { book: Book }) {
+  return (
+    <Link to={`/books/${book.isbn}`} className="recent-book-card">
+      <div className="recent-cover-wrap">
+        <CoverArt book={book} />
+      </div>
+      <div className="recent-card-copy">
+        <div className="chip-row">
+          <TagChip>{book.category}</TagChip>
+          <TagChip tone="outline">{book.bookFormat}</TagChip>
+        </div>
+        <h4 title={book.title}>{book.title || "タイトル未設定"}</h4>
+        <p className="author-line">{book.author || "著者情報なし"}</p>
+        <p className="subtle">{formatDateTime(book.createdAt)}</p>
+      </div>
+    </Link>
+  );
+}
+
+function FloatingScanButton() {
+  return (
+    <Link to="/scan" className="fab-scan">
+      <ScanIcon />
+      <span>スキャンする</span>
+    </Link>
+  );
+}
+
+function BookshelfRow({
+  books,
+  selectedIsbn,
+  onSelect,
+}: {
+  books: Book[];
+  selectedIsbn: string | null;
+  onSelect: (isbn: string | null) => void;
+}) {
+  return (
+    <section className="bookshelf-row">
+      <div className="bookshelf-backboard" />
+      <div className="bookshelf-track">
+        {books.map((book) => {
+          const isSelected = selectedIsbn === book.isbn;
+
+          return (
+            <article
+              key={book.isbn}
+              className={`bookshelf-book ${isSelected ? "is-selected" : ""}`}
+            >
+              <button
+                type="button"
+                className="bookshelf-spine"
+                onClick={() => onSelect(isSelected ? null : book.isbn)}
+                aria-expanded={isSelected}
+              >
+                <span className="spine-accent" style={{ background: coverAccent(book.isbn) }} />
+                <span className="spine-title" title={book.title}>
+                  {book.title || "タイトル未設定"}
+                </span>
+                <span className="spine-author">{book.author || "著者不明"}</span>
+              </button>
+              <div className="bookshelf-face">
+                <Link to={`/books/${book.isbn}`} className="bookshelf-face-link">
+                  <CoverArt book={book} />
+                  <div className="bookshelf-face-copy">
+                    <div className="chip-row">
+                      <TagChip>{book.category}</TagChip>
+                      <TagChip tone="outline">{book.bookFormat}</TagChip>
+                    </div>
+                    <strong title={book.title}>{book.title || "タイトル未設定"}</strong>
+                    <span>{book.author || "著者情報なし"}</span>
+                    <small>{formatDate(book.createdAt)}</small>
+                  </div>
+                </Link>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <div className="bookshelf-plank" />
+    </section>
+  );
+}
+
+function CoverArt({
+  book,
+  large = false,
+}: {
+  book: Pick<Book, "title" | "coverImageUrl" | "isbn"> | BookLookupResult;
+  large?: boolean;
+}) {
+  if (book.coverImageUrl) {
+    return (
+      <img
+        className={`cover-art ${large ? "large" : ""}`}
+        src={book.coverImageUrl}
+        alt={book.title || "書影"}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`cover-fallback ${large ? "large" : ""}`}
+      style={{ background: coverAccent(book.isbn) }}
+    >
+      <span>{book.title ? book.title.slice(0, 24) : "NO IMAGE"}</span>
+    </div>
+  );
+}
+
+function TagChip({ children, tone = "solid" }: { children: ReactNode; tone?: "solid" | "outline" }) {
+  return <span className={`tag-chip ${tone === "outline" ? "is-outline" : ""}`}>{children}</span>;
+}
+
+function SearchIcon() {
+  return (
+    <svg className="icon search-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10.5 4a6.5 6.5 0 1 0 4.1 11.54l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function ScanIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4 7a3 3 0 0 1 3-3h2v2H7a1 1 0 0 0-1 1v2H4V7Zm13-3h-2v2h2a1 1 0 0 1 1 1v2h2V7a3 3 0 0 0-3-3ZM6 15H4v2a3 3 0 0 0 3 3h2v-2H7a1 1 0 0 1-1-1v-2Zm14 0h-2v2a1 1 0 0 1-1 1h-2v2h2a3 3 0 0 0 3-3v-2ZM7 10h2v4H7v-4Zm4-1h2v6h-2V9Zm4 1h2v4h-2v-4Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function sortBooks(books: Book[], sort: SortOption): Book[] {
+  const next = [...books];
+
+  next.sort((left, right) => {
+    if (sort === "oldest") {
+      return left.createdAt.localeCompare(right.createdAt);
+    }
+
+    if (sort === "title") {
+      return left.title.localeCompare(right.title, "ja");
+    }
+
+    if (sort === "author") {
+      return left.author.localeCompare(right.author, "ja");
+    }
+
+    return right.createdAt.localeCompare(left.createdAt);
+  });
+
+  return next;
+}
+
+function isInCurrentMonth(value: string): boolean {
+  const date = new Date(value);
+  const now = new Date();
+
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
+
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).format(new Date(value));
+}
+
+function formatRelativeTime(value: string): string {
+  const delta = new Date(value).getTime() - Date.now();
+  const minutes = Math.round(delta / (1000 * 60));
+  const hours = Math.round(delta / (1000 * 60 * 60));
+  const days = Math.round(delta / (1000 * 60 * 60 * 24));
+  const formatter = new Intl.RelativeTimeFormat("ja", { numeric: "auto" });
+
+  if (Math.abs(minutes) < 60) {
+    return formatter.format(minutes, "minute");
+  }
+
+  if (Math.abs(hours) < 24) {
+    return formatter.format(hours, "hour");
+  }
+
+  return formatter.format(days, "day");
+}
+
+function chunkBooks(books: Book[], chunkSize: number): Book[][] {
+  const chunks: Book[][] = [];
+
+  for (let index = 0; index < books.length; index += chunkSize) {
+    chunks.push(books.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+}
+
+function coverAccent(seed: string): string {
+  const palettes = [
+    "linear-gradient(180deg, #2aa3a7 0%, #14656e 100%)",
+    "linear-gradient(180deg, #81c7d4 0%, #4f95ab 100%)",
+    "linear-gradient(180deg, #f2c66c 0%, #d38e31 100%)",
+    "linear-gradient(180deg, #7fc0a9 0%, #4e8873 100%)",
+    "linear-gradient(180deg, #9eb7df 0%, #607fa9 100%)",
+  ];
+  const total = [...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return palettes[total % palettes.length];
 }
 
 export default App;
