@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_COGNITO_REDIRECT_URI: string;
   readonly VITE_COGNITO_LOGOUT_REDIRECT_URI: string;
   readonly VITE_COGNITO_SCOPE: string;
+  readonly VITE_E2E_DEMO_MODE?: string;
 }
 
 interface ImportMeta {

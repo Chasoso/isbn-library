@@ -1,5 +1,6 @@
 import { config } from "../config";
 import type { Book, BookLookupResult, CreateBookPayload } from "../types";
+import { mockSession } from "./mockData";
 
 export class ApiError extends Error {
   status: number;
@@ -37,6 +38,14 @@ const request = async <T>(
   return payload as T;
 };
 
+const ensureMockBook = (isbn: string): Book => {
+  try {
+    return mockSession.getBook(isbn);
+  } catch {
+    throw new ApiError("Book not found", 404);
+  }
+};
+
 export const getBooks = async (
   accessToken: string,
   filters?: {
@@ -45,6 +54,10 @@ export const getBooks = async (
     category?: string;
   },
 ): Promise<{ items: Book[] }> => {
+  if (config.e2eDemoMode) {
+    return mockSession.getBooks(filters);
+  }
+
   const params = new URLSearchParams();
 
   if (filters?.query) {
@@ -63,29 +76,50 @@ export const getBooks = async (
   return request<{ items: Book[] }>(`/books${search ? `?${search}` : ""}`, accessToken);
 };
 
-export const getBook = async (
-  accessToken: string,
-  isbn: string,
-): Promise<Book> => request<Book>(`/books/${isbn}`, accessToken);
+export const getBook = async (accessToken: string, isbn: string): Promise<Book> => {
+  if (config.e2eDemoMode) {
+    return ensureMockBook(isbn);
+  }
+
+  return request<Book>(`/books/${isbn}`, accessToken);
+};
 
 export const createBook = async (
   accessToken: string,
   payload: CreateBookPayload,
-): Promise<Book> =>
-  request<Book>("/books", accessToken, {
+): Promise<Book> => {
+  if (config.e2eDemoMode) {
+    try {
+      return mockSession.createBook(payload);
+    } catch {
+      throw new ApiError("Book already exists", 409);
+    }
+  }
+
+  return request<Book>("/books", accessToken, {
     method: "POST",
     body: JSON.stringify(payload),
   });
+};
 
-export const deleteBook = async (
-  accessToken: string,
-  isbn: string,
-): Promise<void> =>
-  request<void>(`/books/${isbn}`, accessToken, {
+export const deleteBook = async (accessToken: string, isbn: string): Promise<void> => {
+  if (config.e2eDemoMode) {
+    mockSession.deleteBook(isbn);
+    return;
+  }
+
+  return request<void>(`/books/${isbn}`, accessToken, {
     method: "DELETE",
   });
+};
 
 export const lookupBook = async (
   accessToken: string,
   isbn: string,
-): Promise<BookLookupResult> => request<BookLookupResult>(`/lookup/${isbn}`, accessToken);
+): Promise<BookLookupResult> => {
+  if (config.e2eDemoMode) {
+    return mockSession.lookupBook(isbn);
+  }
+
+  return request<BookLookupResult>(`/lookup/${isbn}`, accessToken);
+};

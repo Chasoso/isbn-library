@@ -99,3 +99,16 @@ Amplify Hosting の Basic 認証はアプリ外設定です。本リポジトリ
 重複判定は引き続き `userId + isbn` のみで行い、分類情報は使用しません。蔵書一覧では分類条件でフィルタできます。
 
 詳しいセットアップは [docs/setup.md](/d:/Git/isbn-library/docs/setup.md) を参照してください。
+
+## Frontend Visual Tests
+
+フロントエンドは Playwright で画面確認できます。E2E 用のデモモードでホーム画面と蔵書一覧を開き、毎回スクリーンショットを保存します。
+
+```bash
+cd frontend
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
+
+スクリーンショットは `frontend/test-results/`、HTML レポートは `frontend/playwright-report/` に出力されます。GitHub Actions でも同じスクリーンショットを毎回 artifact として保存します。

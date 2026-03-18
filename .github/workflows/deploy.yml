@@ -40,9 +40,49 @@ jobs:
       - name: Run Lambda tests with coverage
         run: pytest
 
-  frontend-build:
+  frontend-visual-tests:
     runs-on: ubuntu-latest
     needs: backend-tests
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright visual checks
+        run: npm run test:e2e
+
+      - name: Upload Playwright screenshots
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: frontend-playwright-screenshots
+          path: frontend/test-results
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: frontend-playwright-report
+          path: frontend/playwright-report
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    needs: frontend-visual-tests
     defaults:
       run:
         working-directory: frontend
