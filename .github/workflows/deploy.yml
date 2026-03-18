@@ -131,8 +131,10 @@ jobs:
             --branch-name "${{ vars.AMPLIFY_BRANCH_NAME }}" \
             --max-items 25 \
             --query "length(jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'])" \
-            --output text)
-          echo "active_jobs=$COUNT" >> "$GITHUB_OUTPUT"
+            --output text | tr -d '\r\n')
+          printf 'active_jobs=%s\n' "$COUNT" >> "$GITHUB_OUTPUT"
+        env:
+          AWS_PAGER: ""
 
       - name: Trigger Amplify deployment
         if: ${{ steps.amplify-jobs.outputs.active_jobs == '0' }}
