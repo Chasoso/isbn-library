@@ -51,7 +51,6 @@ function App() {
 
     const loadUser = async (): Promise<void> => {
       const user = await userManager.getUser();
-
       if (!mounted) {
         return;
       }
@@ -66,7 +65,6 @@ function App() {
     };
 
     void loadUser();
-
     return () => {
       mounted = false;
     };
@@ -126,8 +124,7 @@ function ProtectedLayout({
           <p className="kicker">ISBN LIBRARY</p>
           <h1>蔵書ダッシュボードへログイン</h1>
           <p className="auth-copy">
-            このアプリは認証済みユーザーのみ利用できます。管理者が作成したアカウントで
-            ログインしてください。
+            このアプリは認証済みユーザーのみ利用できます。管理者が作成したアカウントでログインしてください。
           </p>
           <button className="primary-pill" onClick={() => void signIn()}>
             ログイン
@@ -159,12 +156,8 @@ function AppLayout({
       <header className="app-header">
         <div className="brand-block">
           <p className="kicker">ISBN DUPLICATE CHECK</p>
-          <div className="title-row">
-            <div>
-              <h1>{title}</h1>
-              {subtitle ? <p className="subtle">{subtitle}</p> : null}
-            </div>
-          </div>
+          <h1>{title}</h1>
+          {subtitle ? <p className="subtle">{subtitle}</p> : null}
         </div>
         <nav className="nav-tabs" aria-label="メインメニュー">
           <NavLink to="/">ホーム</NavLink>
@@ -193,7 +186,6 @@ function AuthCallbackPage({
       try {
         await handleSignInCallback();
         const user = await userManager.getUser();
-
         onLoaded({
           isAuthenticated: Boolean(user && !user.expired),
           accessToken: user?.access_token ?? null,
@@ -246,10 +238,7 @@ function HomePage({ authState }: { authState: AuthState }) {
   const categoryCount = new Set(books.map((book) => book.category)).size;
 
   return (
-    <AppLayout
-      title="ホーム"
-      subtitle={authState.name ? `${authState.name}さんの蔵書ダッシュボード` : null}
-    >
+    <AppLayout title="ホーム" subtitle={authState.name ? `${authState.name}さんの蔵書ダッシュボード` : null}>
       <section className="dashboard-hero panel">
         <div className="hero-copy">
           <p className="section-label">あなたの蔵書</p>
@@ -373,41 +362,6 @@ function ScanPage() {
       }
     };
 
-    const applyVideoTrackTuning = async (): Promise<void> => {
-      const track =
-        videoRef.current?.srcObject instanceof MediaStream
-          ? videoRef.current.srcObject.getVideoTracks()[0]
-          : null;
-
-      if (!track) {
-        return;
-      }
-
-      const capabilities = track.getCapabilities?.() as Record<string, unknown> | undefined;
-      const advanced: Record<string, unknown> = {};
-
-      const focusModes = capabilities?.focusMode as string[] | undefined;
-      if (focusModes?.includes("continuous")) {
-        advanced.focusMode = "continuous";
-      }
-
-      const exposureModes = capabilities?.exposureMode as string[] | undefined;
-      if (exposureModes?.includes("continuous")) {
-        advanced.exposureMode = "continuous";
-      }
-
-      const zoom = capabilities?.zoom as { max?: number } | undefined;
-      if (zoom?.max && zoom.max >= 2) {
-        advanced.zoom = Math.min(2, zoom.max);
-      }
-
-      if (Object.keys(advanced).length > 0) {
-        await track
-          .applyConstraints({ advanced: [advanced as MediaTrackConstraintSet] })
-          .catch(() => undefined);
-      }
-    };
-
     const start = async (): Promise<void> => {
       if (!videoRef.current) {
         setMessage("スキャン画面の初期化に失敗しました。");
@@ -433,7 +387,6 @@ function ScanPage() {
               facingMode: "environment",
               width: { ideal: 1920 },
               height: { ideal: 1080 },
-              aspectRatio: { ideal: 1.7777778 },
             },
           },
           videoRef.current,
@@ -457,21 +410,17 @@ function ScanPage() {
         );
 
         controlsRef.current = controls;
-        await applyVideoTrackTuning();
         setMessage("バーコードを枠の中央に合わせてください。少し離して固定すると読み取りやすくなります。");
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
-
         if (/Permission|denied|NotAllowed/i.test(detail)) {
           setMessage("カメラ権限が拒否されています。ブラウザ設定でカメラ利用を許可してください。");
           return;
         }
-
         if (/secure|https|origin/i.test(detail)) {
           setMessage("カメラは HTTPS または localhost でのみ利用できます。");
           return;
         }
-
         setMessage(`カメラを利用できません: ${detail}`);
       }
     };
@@ -562,10 +511,6 @@ function ResultPage({ accessToken }: { accessToken: string }) {
     void load();
   }, [accessToken, isbn]);
 
-  const statusText = registered
-    ? "この本はすでに登録されています"
-    : "この本は未登録です";
-
   const handleCreate = async (): Promise<void> => {
     if (!book || registered) {
       return;
@@ -582,8 +527,6 @@ function ResultPage({ accessToken }: { accessToken: string }) {
         bookFormat,
         category,
       });
-      setMessage("蔵書に登録しました。");
-      setRegistered(true);
       navigate(`/books/${isbn}`, { replace: true });
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
@@ -599,7 +542,7 @@ function ResultPage({ accessToken }: { accessToken: string }) {
     <AppLayout title="判定結果" subtitle={`ISBN ${isbn}`}>
       <section className={`panel result-banner ${registered ? "is-registered" : "is-unregistered"}`}>
         <p className="section-label">判定ステータス</p>
-        <h2>{loading ? "確認中..." : statusText}</h2>
+        <h2>{loading ? "確認中..." : registered ? "この本はすでに登録されています" : "この本は未登録です"}</h2>
         {message ? <p className="subtle">{message}</p> : null}
       </section>
 
@@ -620,21 +563,11 @@ function ResultPage({ accessToken }: { accessToken: string }) {
               <CoverArt book={book} large />
               <div className="detail-copy">
                 <h2>{book.title || "タイトル未設定"}</h2>
-                <p>
-                  <strong>著者:</strong> {book.author || "-"}
-                </p>
-                <p>
-                  <strong>出版社:</strong> {book.publisher || "-"}
-                </p>
-                <p>
-                  <strong>出版日:</strong> {book.publishedDate || "-"}
-                </p>
-                <p>
-                  <strong>分類:</strong> {"bookFormat" in book ? book.bookFormat : bookFormat}
-                </p>
-                <p>
-                  <strong>カテゴリ:</strong> {"category" in book ? book.category : category}
-                </p>
+                <p><strong>著者:</strong> {book.author || "-"}</p>
+                <p><strong>出版社:</strong> {book.publisher || "-"}</p>
+                <p><strong>出版日:</strong> {book.publishedDate || "-"}</p>
+                <p><strong>分類:</strong> {"bookFormat" in book ? book.bookFormat : bookFormat}</p>
+                <p><strong>カテゴリ:</strong> {"category" in book ? book.category : category}</p>
               </div>
             </div>
             {!registered ? (
@@ -642,27 +575,17 @@ function ResultPage({ accessToken }: { accessToken: string }) {
                 <div className="classification-grid">
                   <label>
                     <span>形態</span>
-                    <select
-                      value={bookFormat}
-                      onChange={(event) => setBookFormat(event.target.value as BookFormat)}
-                    >
+                    <select value={bookFormat} onChange={(event) => setBookFormat(event.target.value as BookFormat)}>
                       {bookFormats.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
+                        <option key={item} value={item}>{item}</option>
                       ))}
                     </select>
                   </label>
                   <label>
                     <span>ジャンル</span>
-                    <select
-                      value={category}
-                      onChange={(event) => setCategory(event.target.value as Category)}
-                    >
+                    <select value={category} onChange={(event) => setCategory(event.target.value as Category)}>
                       {categories.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
+                        <option key={item} value={item}>{item}</option>
                       ))}
                     </select>
                   </label>
@@ -707,11 +630,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
     const load = async (): Promise<void> => {
       setLoading(true);
       try {
-        const result = await getBooks(accessToken, {
-          query,
-          bookFormat,
-          category,
-        });
+        const result = await getBooks(accessToken, { query, bookFormat, category });
         setBooks(sortBooks(result.items, sort));
       } finally {
         setLoading(false);
@@ -725,20 +644,10 @@ function BooksPage({ accessToken }: { accessToken: string }) {
 
   const applyFilters = (): void => {
     const nextParams = new URLSearchParams();
-
-    if (searchText.trim()) {
-      nextParams.set("q", searchText.trim());
-    }
-    if (bookFormatFilter) {
-      nextParams.set("bookFormat", bookFormatFilter);
-    }
-    if (categoryFilter) {
-      nextParams.set("category", categoryFilter);
-    }
-    if (sortValue !== "newest") {
-      nextParams.set("sort", sortValue);
-    }
-
+    if (searchText.trim()) nextParams.set("q", searchText.trim());
+    if (bookFormatFilter) nextParams.set("bookFormat", bookFormatFilter);
+    if (categoryFilter) nextParams.set("category", categoryFilter);
+    if (sortValue !== "newest") nextParams.set("sort", sortValue);
     navigate(`/books${nextParams.toString() ? `?${nextParams.toString()}` : ""}`);
   };
 
@@ -763,9 +672,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
             <span>並び替え</span>
             <select value={sortValue} onChange={(event) => setSortValue(event.target.value as SortOption)}>
               {sortOptions.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
+                <option key={item.value} value={item.value}>{item.label}</option>
               ))}
             </select>
           </label>
@@ -774,9 +681,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
             <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
               <option value="">すべて</option>
               {categories.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
+                <option key={item} value={item}>{item}</option>
               ))}
             </select>
           </label>
@@ -785,9 +690,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
             <select value={bookFormatFilter} onChange={(event) => setBookFormatFilter(event.target.value)}>
               <option value="">すべて</option>
               {bookFormats.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
+                <option key={item} value={item}>{item}</option>
               ))}
             </select>
           </label>
@@ -807,12 +710,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
         ) : null}
         {!loading &&
           rows.map((row, index) => (
-            <BookshelfRow
-              key={`row-${index}`}
-              books={row}
-              selectedIsbn={selectedIsbn}
-              onSelect={setSelectedIsbn}
-            />
+            <BookshelfRow key={`row-${index}`} books={row} selectedIsbn={selectedIsbn} onSelect={setSelectedIsbn} />
           ))}
       </section>
     </AppLayout>
@@ -868,9 +766,7 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
         {message ? <p className="subtle">{message}</p> : null}
         {notFound ? (
           <p>
-            <Link className="text-link" to="/books">
-              蔵書一覧へ戻る
-            </Link>
+            <Link className="text-link" to="/books">蔵書一覧へ戻る</Link>
           </p>
         ) : null}
         {book ? (
@@ -883,21 +779,11 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
                   <TagChip tone="outline">{book.bookFormat}</TagChip>
                 </div>
                 <h2>{book.title}</h2>
-                <p>
-                  <strong>著者:</strong> {book.author || "-"}
-                </p>
-                <p>
-                  <strong>出版社:</strong> {book.publisher || "-"}
-                </p>
-                <p>
-                  <strong>出版日:</strong> {book.publishedDate || "-"}
-                </p>
-                <p>
-                  <strong>ISBN:</strong> {book.isbn}
-                </p>
-                <p>
-                  <strong>登録日時:</strong> {formatDateTime(book.createdAt)}
-                </p>
+                <p><strong>著者:</strong> {book.author || "-"}</p>
+                <p><strong>出版社:</strong> {book.publisher || "-"}</p>
+                <p><strong>出版日:</strong> {book.publishedDate || "-"}</p>
+                <p><strong>ISBN:</strong> {book.isbn}</p>
+                <p><strong>登録日時:</strong> {formatDateTime(book.createdAt)}</p>
               </div>
             </div>
             <button className="danger-pill" onClick={() => void handleDelete()}>
@@ -950,12 +836,7 @@ function SearchBar({
       }}
     >
       <SearchIcon />
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        aria-label={placeholder}
-      />
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} aria-label={placeholder} />
       <button type="submit" className="inline-search-action">
         {submitLabel}
       </button>
@@ -1008,21 +889,20 @@ function BookshelfRow({
           const isSelected = selectedIsbn === book.isbn;
 
           return (
-            <article
-              key={book.isbn}
-              className={`bookshelf-book ${isSelected ? "is-selected" : ""}`}
-            >
+            <article key={book.isbn} className={`bookshelf-book ${isSelected ? "is-selected" : ""}`}>
               <button
                 type="button"
                 className="bookshelf-spine"
                 onClick={() => onSelect(isSelected ? null : book.isbn)}
                 aria-expanded={isSelected}
               >
+                <CoverArt book={book} className="bookshelf-cover-art" />
+                <span className="bookshelf-cover-shadow" aria-hidden="true" />
                 <span className="spine-accent" style={{ background: coverAccent(book.isbn) }} />
-                <span className="spine-title" title={book.title}>
-                  {book.title || "タイトル未設定"}
+                <span className="bookshelf-spine-copy">
+                  <span className="spine-title" title={book.title}>{book.title || "タイトル未設定"}</span>
+                  <span className="spine-author">{book.author || "著者不明"}</span>
                 </span>
-                <span className="spine-author">{book.author || "著者不明"}</span>
               </button>
               <div className="bookshelf-face">
                 <Link to={`/books/${book.isbn}`} className="bookshelf-face-link">
@@ -1050,25 +930,32 @@ function BookshelfRow({
 function CoverArt({
   book,
   large = false,
+  className = "",
 }: {
   book: Pick<Book, "title" | "coverImageUrl" | "isbn"> | BookLookupResult;
   large?: boolean;
+  className?: string;
 }) {
-  if (book.coverImageUrl) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [book.coverImageUrl, book.isbn]);
+
+  if (book.coverImageUrl && !imageFailed) {
     return (
       <img
-        className={`cover-art ${large ? "large" : ""}`}
+        className={`cover-art ${large ? "large" : ""} ${className}`.trim()}
         src={book.coverImageUrl}
         alt={book.title || "書影"}
+        loading="lazy"
+        onError={() => setImageFailed(true)}
       />
     );
   }
 
   return (
-    <div
-      className={`cover-fallback ${large ? "large" : ""}`}
-      style={{ background: coverAccent(book.isbn) }}
-    >
+    <div className={`cover-fallback ${large ? "large" : ""} ${className}`.trim()} style={{ background: coverAccent(book.isbn) }}>
       <span>{book.title ? book.title.slice(0, 24) : "NO IMAGE"}</span>
     </div>
   );
@@ -1081,10 +968,7 @@ function TagChip({ children, tone = "solid" }: { children: ReactNode; tone?: "so
 function SearchIcon() {
   return (
     <svg className="icon search-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M10.5 4a6.5 6.5 0 1 0 4.1 11.54l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
-        fill="currentColor"
-      />
+      <path d="M10.5 4a6.5 6.5 0 1 0 4.1 11.54l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" fill="currentColor" />
     </svg>
   );
 }
@@ -1092,58 +976,34 @@ function SearchIcon() {
 function ScanIcon() {
   return (
     <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M4 7a3 3 0 0 1 3-3h2v2H7a1 1 0 0 0-1 1v2H4V7Zm13-3h-2v2h2a1 1 0 0 1 1 1v2h2V7a3 3 0 0 0-3-3ZM6 15H4v2a3 3 0 0 0 3 3h2v-2H7a1 1 0 0 1-1-1v-2Zm14 0h-2v2a1 1 0 0 1-1 1h-2v2h2a3 3 0 0 0 3-3v-2ZM7 10h2v4H7v-4Zm4-1h2v6h-2V9Zm4 1h2v4h-2v-4Z"
-        fill="currentColor"
-      />
+      <path d="M4 7a3 3 0 0 1 3-3h2v2H7a1 1 0 0 0-1 1v2H4V7Zm13-3h-2v2h2a1 1 0 0 1 1 1v2h2V7a3 3 0 0 0-3-3ZM6 15H4v2a3 3 0 0 0 3 3h2v-2H7a1 1 0 0 1-1-1v-2Zm14 0h-2v2a1 1 0 0 1-1 1h-2v2h2a3 3 0 0 0 3-3v-2ZM7 10h2v4H7v-4Zm4-1h2v6h-2V9Zm4 1h2v4h-2v-4Z" fill="currentColor" />
     </svg>
   );
 }
 
 function sortBooks(books: Book[], sort: SortOption): Book[] {
   const next = [...books];
-
   next.sort((left, right) => {
-    if (sort === "oldest") {
-      return left.createdAt.localeCompare(right.createdAt);
-    }
-
-    if (sort === "title") {
-      return left.title.localeCompare(right.title, "ja");
-    }
-
-    if (sort === "author") {
-      return left.author.localeCompare(right.author, "ja");
-    }
-
+    if (sort === "oldest") return left.createdAt.localeCompare(right.createdAt);
+    if (sort === "title") return left.title.localeCompare(right.title, "ja");
+    if (sort === "author") return left.author.localeCompare(right.author, "ja");
     return right.createdAt.localeCompare(left.createdAt);
   });
-
   return next;
 }
 
 function isInCurrentMonth(value: string): boolean {
   const date = new Date(value);
   const now = new Date();
-
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
 }
 
 function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("ja-JP", {
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "numeric", day: "numeric" }).format(new Date(value));
 }
 
 function formatRelativeTime(value: string): string {
@@ -1152,25 +1012,16 @@ function formatRelativeTime(value: string): string {
   const hours = Math.round(delta / (1000 * 60 * 60));
   const days = Math.round(delta / (1000 * 60 * 60 * 24));
   const formatter = new Intl.RelativeTimeFormat("ja", { numeric: "auto" });
-
-  if (Math.abs(minutes) < 60) {
-    return formatter.format(minutes, "minute");
-  }
-
-  if (Math.abs(hours) < 24) {
-    return formatter.format(hours, "hour");
-  }
-
+  if (Math.abs(minutes) < 60) return formatter.format(minutes, "minute");
+  if (Math.abs(hours) < 24) return formatter.format(hours, "hour");
   return formatter.format(days, "day");
 }
 
 function chunkBooks(books: Book[], chunkSize: number): Book[][] {
   const chunks: Book[][] = [];
-
   for (let index = 0; index < books.length; index += chunkSize) {
     chunks.push(books.slice(index, index + chunkSize));
   }
-
   return chunks;
 }
 
