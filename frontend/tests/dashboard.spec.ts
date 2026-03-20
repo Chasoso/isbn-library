@@ -21,9 +21,8 @@ test.describe("frontend dashboard visuals", () => {
     await expect(page.getByText("Books")).toBeVisible();
     await expect(page.getByRole("button", { name: "絞り込む" })).toBeVisible();
 
-    const firstSpine = page.locator(".bookshelf-spine").first();
-    await firstSpine.click();
-    await expect(page.locator(".bookshelf-book.is-selected").first()).toBeVisible();
+    await expect(page.locator(".coverflow-book.is-active").first()).toBeVisible();
+    await expect(page.locator(".coverflow-selection")).toBeVisible();
 
     await page.screenshot({
       path: testInfo.outputPath("bookshelf-view.png"),

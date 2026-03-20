@@ -18,6 +18,7 @@ import {
   useParams,
 } from "react-router-dom";
 import { bookFormats, categories, type BookFormat, type Category } from "./catalog";
+import { CoverFlowShelf } from "./components/CoverFlowShelf";
 import { handleSignInCallback, signIn, signOut, userManager } from "./lib/auth";
 import {
   ApiError,
@@ -648,7 +649,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
   const [categoryFilter, setCategoryFilter] = useState(category);
   const [readingStatusFilter, setReadingStatusFilter] = useState(readingStatus);
   const [sortValue, setSortValue] = useState<SortOption>(sort);
-  const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     setSearchText(query);
@@ -663,7 +664,9 @@ function BooksPage({ accessToken }: { accessToken: string }) {
       setLoading(true);
       try {
         const result = await getBooks(accessToken, { query, bookFormat, category, readingStatus });
-        setBooks(sortBooks(result.items, sort));
+        const sorted = sortBooks(result.items, sort);
+        setBooks(sorted);
+        setActiveIndex(sorted.length > 0 ? Math.floor((sorted.length - 1) / 2) : 0);
       } finally {
         setLoading(false);
       }
@@ -671,8 +674,6 @@ function BooksPage({ accessToken }: { accessToken: string }) {
 
     void load();
   }, [accessToken, query, bookFormat, category, readingStatus, sort]);
-
-  const rows = chunkBooks(books, 5);
 
   const applyFilters = (): void => {
     const nextParams = new URLSearchParams();
@@ -750,10 +751,9 @@ function BooksPage({ accessToken }: { accessToken: string }) {
             <p className="subtle">検索語やフィルタを変更するか、右下のボタンから新しく登録してください。</p>
           </div>
         ) : null}
-        {!loading &&
-          rows.map((row, index) => (
-            <BookshelfRow key={`row-${index}`} books={row} selectedIsbn={selectedIsbn} onSelect={setSelectedIsbn} />
-          ))}
+        {!loading && books.length > 0 ? (
+          <CoverFlowShelf books={books} activeIndex={activeIndex} onActiveIndexChange={setActiveIndex} />
+        ) : null}
       </section>
     </AppLayout>
   );

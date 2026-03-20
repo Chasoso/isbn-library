@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/catalog.ts","./src/config.ts","./src/env.d.ts","./src/main.tsx","./src/readingstatus.ts","./src/types.ts","./src/lib/api.ts","./src/lib/auth.ts","./src/lib/isbn.ts","./src/lib/mockdata.ts"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/catalog.ts","./src/config.ts","./src/env.d.ts","./src/main.tsx","./src/readingstatus.ts","./src/types.ts","./src/components/coverflowshelf.tsx","./src/lib/api.ts","./src/lib/auth.ts","./src/lib/isbn.ts","./src/lib/mockdata.ts"],"version":"5.9.3"}
