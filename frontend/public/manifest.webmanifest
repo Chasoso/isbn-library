@@ -1,0 +1,17 @@
+{
+  "name": "ISBN Library",
+  "short_name": "ISBN Library",
+  "description": "ISBN スキャンで重複購入を防ぐ個人用蔵書管理アプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f8fd",
+  "theme_color": "#2aa3a7",
+  "icons": [
+    {
+      "src": "/isbn_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
