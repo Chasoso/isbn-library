@@ -157,6 +157,14 @@ class IsbnLibraryStack(Stack):
             **common_lambda_props,
         )
 
+        update_book_status_lambda = lambda_.Function(
+            self,
+            "UpdateBookStatusLambda",
+            code=lambda_.Code.from_asset("../backend/lambda/update_book_status"),
+            handler="handler.handler",
+            **common_lambda_props,
+        )
+
         lookup_book_lambda = lambda_.Function(
             self,
             "LookupBookLambda",
@@ -169,6 +177,7 @@ class IsbnLibraryStack(Stack):
         books_table.grant_read_data(get_book_lambda)
         books_table.grant_read_write_data(create_book_lambda)
         books_table.grant_read_write_data(delete_book_lambda)
+        books_table.grant_read_write_data(update_book_status_lambda)
 
         http_api = apigatewayv2.HttpApi(
             self,
@@ -178,6 +187,7 @@ class IsbnLibraryStack(Stack):
                 allow_methods=[
                     apigatewayv2.CorsHttpMethod.GET,
                     apigatewayv2.CorsHttpMethod.POST,
+                    apigatewayv2.CorsHttpMethod.PATCH,
                     apigatewayv2.CorsHttpMethod.DELETE,
                     apigatewayv2.CorsHttpMethod.OPTIONS,
                 ],
@@ -220,6 +230,14 @@ class IsbnLibraryStack(Stack):
             methods=[apigatewayv2.HttpMethod.DELETE],
             integration=integrations.HttpLambdaIntegration(
                 "DeleteBookIntegration", delete_book_lambda
+            ),
+            authorizer=jwt_authorizer,
+        )
+        http_api.add_routes(
+            path="/books/{isbn}/status",
+            methods=[apigatewayv2.HttpMethod.PATCH],
+            integration=integrations.HttpLambdaIntegration(
+                "UpdateBookStatusIntegration", update_book_status_lambda
             ),
             authorizer=jwt_authorizer,
         )

@@ -14,6 +14,7 @@ from shared.catalog import (
 from shared.dynamo import get_books_table
 from shared.isbn import normalize_isbn
 from shared.responses import json_response
+from shared.statuses import DEFAULT_READING_STATUS, READING_STATUSES
 
 
 def build_item(user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -27,6 +28,7 @@ def build_item(user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         "coverImageUrl": payload.get("coverImageUrl", ""),
         "bookFormat": payload.get("bookFormat", DEFAULT_BOOK_FORMAT),
         "category": payload.get("category", DEFAULT_CATEGORY),
+        "readingStatus": payload.get("readingStatus", DEFAULT_READING_STATUS),
         "createdAt": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -42,6 +44,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
         book_format = str(payload.get("bookFormat", DEFAULT_BOOK_FORMAT))
         category = str(payload.get("category", DEFAULT_CATEGORY))
+        reading_status = str(payload.get("readingStatus", DEFAULT_READING_STATUS))
 
         if book_format not in BOOK_FORMATS:
             return json_response(400, {"message": "Invalid bookFormat"})
@@ -49,9 +52,13 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         if category not in CATEGORIES:
             return json_response(400, {"message": "Invalid category"})
 
+        if reading_status not in READING_STATUSES:
+            return json_response(400, {"message": "Invalid readingStatus"})
+
         payload["isbn"] = isbn
         payload["bookFormat"] = book_format
         payload["category"] = category
+        payload["readingStatus"] = reading_status
         item = build_item(user_id, payload)
 
         table = get_books_table()

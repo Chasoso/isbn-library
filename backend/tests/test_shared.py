@@ -12,7 +12,7 @@ def test_normalize_isbn_rejects_invalid() -> None:
     assert normalize_isbn("123") is None
 
 
-def test_to_book_response_defaults_classification() -> None:
+def test_to_book_response_defaults_classification_and_status() -> None:
     response = to_book_response(
         {
             "userId": "user-123",
@@ -23,3 +23,4 @@ def test_to_book_response_defaults_classification() -> None:
 
     assert response["bookFormat"] == "その他"
     assert response["category"] == "その他"
+    assert response["readingStatus"] == "未読"

@@ -34,18 +34,20 @@ const demoBooks: Book[] = [
     coverImageUrl: createMockCover("英語フレーズ大全", "#35b6b0", "ビジネス"),
     bookFormat: "単行本",
     category: "ビジネス",
+    readingStatus: "読書中",
     createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
   },
   {
     userId: "demo-user",
     isbn: "9784798183251",
     title: "優れたエンジニアがコミュニティの中でしていること",
-    author: "黒須 善一, 酒井 真弓, 宮本 佳歩",
+    author: "黒須 義一, 酒井 真弓, 宮本 佳歩",
     publisher: "翔泳社",
     publishedDate: "2025-01-20",
     coverImageUrl: createMockCover("コミュニティの中でしていること", "#f0b24f", "技術書"),
     bookFormat: "単行本",
     category: "技術書",
+    readingStatus: "未読",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
   },
   {
@@ -55,21 +57,23 @@ const demoBooks: Book[] = [
     author: "James Clear",
     publisher: "パンローリング",
     publishedDate: "2022-11-02",
-    coverImageUrl: createMockCover("Atomic Habits", "#7ab7cf", "趣味"),
+    coverImageUrl: createMockCover("Atomic Habits", "#7ab7cf", "統計"),
     bookFormat: "ハードカバー",
-    category: "趣味",
+    category: "統計",
+    readingStatus: "完了",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
   },
   {
     userId: "demo-user",
     isbn: "9784296116904",
-    title: "10年後、後悔しないための読書術",
-    author: "藤木 俊明",
+    title: "10年後、君に仕事はあるのか?",
+    author: "藤原 和博",
     publisher: "日経BP",
     publishedDate: "2023-07-01",
-    coverImageUrl: createMockCover("10年後、後悔しないための読書術", "#90c98c", "ビジネス"),
+    coverImageUrl: createMockCover("10年後、君に仕事はあるのか?", "#90c98c", "ビジネス"),
     bookFormat: "新書",
     category: "ビジネス",
+    readingStatus: "未読",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
   },
   {
@@ -80,20 +84,22 @@ const demoBooks: Book[] = [
     publisher: "ダイヤモンド社",
     publishedDate: "2024-10-10",
     coverImageUrl: createMockCover("統計学が最強の学問である", "#708ed6", "統計"),
-    bookFormat: "文庫",
+    bookFormat: "新書",
     category: "統計",
+    readingStatus: "完了",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
   },
   {
     userId: "demo-user",
     isbn: "9784478116692",
-    title: "復習する技術",
-    author: "山崎 良",
+    title: "趣味する統計",
+    author: "東堂 葵",
     publisher: "ダイヤモンド社",
     publishedDate: "2023-12-01",
-    coverImageUrl: createMockCover("復習する技術", "#3a8db0", "技術書"),
+    coverImageUrl: createMockCover("趣味する統計", "#3a8db0", "趣味"),
     bookFormat: "新書",
-    category: "技術書",
+    category: "趣味",
+    readingStatus: "読書中",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
   },
 ];
@@ -117,13 +123,14 @@ const matchesQuery = (book: Book, query?: string): boolean => {
 };
 
 export const mockSession = {
-  getBooks(filters?: { query?: string; bookFormat?: string; category?: string }): { items: Book[] } {
+  getBooks(filters?: { query?: string; bookFormat?: string; category?: string; readingStatus?: string }): { items: Book[] } {
     return {
       items: memoryBooks.filter(
         (book) =>
           matchesQuery(book, filters?.query) &&
           (!filters?.bookFormat || book.bookFormat === filters.bookFormat) &&
-          (!filters?.category || book.category === filters.category),
+          (!filters?.category || book.category === filters.category) &&
+          (!filters?.readingStatus || book.readingStatus === filters.readingStatus),
       ),
     };
   },
@@ -149,11 +156,11 @@ export const mockSession = {
 
     return {
       isbn,
-      title: "新しく見つかった書籍",
+      title: "新しく見つかった本",
       author: "デモ著者",
       publisher: "デモ出版社",
       publishedDate: "2026-03-01",
-      coverImageUrl: createMockCover("新しく見つかった書籍", "#9ab7da", "その他"),
+      coverImageUrl: createMockCover("新しく見つかった本", "#9ab7da", "その他"),
     };
   },
   createBook(payload: CreateBookPayload): Book {
@@ -170,6 +177,14 @@ export const mockSession = {
 
     memoryBooks = [created, ...memoryBooks];
     return created;
+  },
+  updateBookStatus(isbn: string, readingStatus: string): Book {
+    const book = memoryBooks.find((item) => item.isbn === isbn);
+    if (!book) {
+      throw new Error("Book not found");
+    }
+    book.readingStatus = readingStatus as Book["readingStatus"];
+    return book;
   },
   deleteBook(isbn: string): void {
     memoryBooks = memoryBooks.filter((item) => item.isbn !== isbn);

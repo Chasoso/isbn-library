@@ -20,6 +20,7 @@ def test_create_book_success(lambda_event: dict[str, object]) -> None:
             "author": "Author",
             "bookFormat": "新書",
             "category": "技術書",
+            "readingStatus": "未読",
         },
         ensure_ascii=False,
     )
@@ -31,6 +32,7 @@ def test_create_book_success(lambda_event: dict[str, object]) -> None:
     assert body["isbn"] == "9784860648114"
     assert body["bookFormat"] == "新書"
     assert body["category"] == "技術書"
+    assert body["readingStatus"] == "未読"
     table.put_item.assert_called_once()
 
 
@@ -46,6 +48,7 @@ def test_create_book_returns_409_for_duplicate(lambda_event: dict[str, object]) 
             "title": "Sample",
             "bookFormat": "新書",
             "category": "技術書",
+            "readingStatus": "未読",
         },
         ensure_ascii=False,
     )
@@ -57,13 +60,14 @@ def test_create_book_returns_409_for_duplicate(lambda_event: dict[str, object]) 
     assert body["message"] == "Book already exists"
 
 
-def test_create_book_rejects_invalid_category(lambda_event: dict[str, object]) -> None:
+def test_create_book_rejects_invalid_reading_status(lambda_event: dict[str, object]) -> None:
     lambda_event["body"] = json.dumps(
         {
             "isbn": "9784860648114",
             "title": "Sample",
             "bookFormat": "新書",
-            "category": "未分類",
+            "category": "技術書",
+            "readingStatus": "積読",
         },
         ensure_ascii=False,
     )
@@ -71,4 +75,4 @@ def test_create_book_rejects_invalid_category(lambda_event: dict[str, object]) -
     status_code, body = parse_response(create_book_handler.handler(lambda_event, None))
 
     assert status_code == 400
-    assert body["message"] == "Invalid category"
+    assert body["message"] == "Invalid readingStatus"

@@ -52,6 +52,7 @@ export const getBooks = async (
     query?: string;
     bookFormat?: string;
     category?: string;
+    readingStatus?: string;
   },
 ): Promise<{ items: Book[] }> => {
   if (config.e2eDemoMode) {
@@ -70,6 +71,10 @@ export const getBooks = async (
 
   if (filters?.category) {
     params.set("category", filters.category);
+  }
+
+  if (filters?.readingStatus) {
+    params.set("readingStatus", filters.readingStatus);
   }
 
   const search = params.toString();
@@ -122,4 +127,19 @@ export const lookupBook = async (
   }
 
   return request<BookLookupResult>(`/lookup/${isbn}`, accessToken);
+};
+
+export const updateBookStatus = async (
+  accessToken: string,
+  isbn: string,
+  readingStatus: string,
+): Promise<Book> => {
+  if (config.e2eDemoMode) {
+    return mockSession.updateBookStatus(isbn, readingStatus);
+  }
+
+  return request<Book>(`/books/${isbn}/status`, accessToken, {
+    method: "PATCH",
+    body: JSON.stringify({ readingStatus }),
+  });
 };

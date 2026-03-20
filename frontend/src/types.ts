@@ -1,4 +1,5 @@
 import type { BookFormat, Category } from "./catalog";
+import type { ReadingStatus } from "./readingStatus";
 
 export interface Book {
   userId: string;
@@ -10,6 +11,7 @@ export interface Book {
   coverImageUrl: string;
   bookFormat: BookFormat;
   category: Category;
+  readingStatus: ReadingStatus;
   createdAt: string;
 }
 
@@ -25,6 +27,7 @@ export interface BookLookupResult {
 export interface CreateBookPayload extends BookLookupResult {
   bookFormat: BookFormat;
   category: Category;
+  readingStatus: ReadingStatus;
 }
 
 export interface AuthState {

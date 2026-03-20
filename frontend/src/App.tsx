@@ -19,8 +19,17 @@ import {
 } from "react-router-dom";
 import { bookFormats, categories, type BookFormat, type Category } from "./catalog";
 import { handleSignInCallback, signIn, signOut, userManager } from "./lib/auth";
-import { ApiError, createBook, deleteBook, getBook, getBooks, lookupBook } from "./lib/api";
+import {
+  ApiError,
+  createBook,
+  deleteBook,
+  getBook,
+  getBooks,
+  lookupBook,
+  updateBookStatus,
+} from "./lib/api";
 import { normalizeIsbn } from "./lib/isbn";
+import { readingStatuses, type ReadingStatus } from "./readingStatus";
 import type { AuthState, Book, BookLookupResult } from "./types";
 
 const initialAuthState: AuthState = {
@@ -30,9 +39,15 @@ const initialAuthState: AuthState = {
   name: null,
   loading: true,
 };
+/*
 
 const defaultBookFormat: BookFormat = "その他";
 const defaultCategory: Category = "その他";
+
+*/
+const defaultBookFormat: BookFormat = bookFormats[bookFormats.length - 1];
+const defaultCategory: Category = categories[categories.length - 1];
+const defaultReadingStatus: ReadingStatus = readingStatuses[0];
 
 const sortOptions = [
   { value: "newest", label: "登録日が新しい順" },
@@ -470,6 +485,7 @@ function ResultPage({ accessToken }: { accessToken: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [bookFormat, setBookFormat] = useState<BookFormat>(defaultBookFormat);
   const [category, setCategory] = useState<Category>(defaultCategory);
+  const [readingStatus, setReadingStatus] = useState<ReadingStatus>(defaultReadingStatus);
 
   useEffect(() => {
     const load = async (): Promise<void> => {
@@ -526,6 +542,7 @@ function ResultPage({ accessToken }: { accessToken: string }) {
         coverImageUrl: book.coverImageUrl,
         bookFormat,
         category,
+        readingStatus,
       });
       navigate(`/books/${isbn}`, { replace: true });
     } catch (error) {
@@ -568,6 +585,7 @@ function ResultPage({ accessToken }: { accessToken: string }) {
                 <p><strong>出版日:</strong> {book.publishedDate || "-"}</p>
                 <p><strong>分類:</strong> {"bookFormat" in book ? book.bookFormat : bookFormat}</p>
                 <p><strong>カテゴリ:</strong> {"category" in book ? book.category : category}</p>
+                <p><strong>読書ステータス:</strong> {"readingStatus" in book ? book.readingStatus : readingStatus}</p>
               </div>
             </div>
             {!registered ? (
@@ -585,6 +603,17 @@ function ResultPage({ accessToken }: { accessToken: string }) {
                     <span>ジャンル</span>
                     <select value={category} onChange={(event) => setCategory(event.target.value as Category)}>
                       {categories.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>読書ステータス</span>
+                    <select
+                      value={readingStatus}
+                      onChange={(event) => setReadingStatus(event.target.value as ReadingStatus)}
+                    >
+                      {readingStatuses.map((item) => (
                         <option key={item} value={item}>{item}</option>
                       ))}
                     </select>
@@ -609,6 +638,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
   const query = params.get("q") ?? "";
   const bookFormat = params.get("bookFormat") ?? "";
   const category = params.get("category") ?? "";
+  const readingStatus = params.get("readingStatus") ?? "";
   const sort = (params.get("sort") as SortOption | null) ?? "newest";
 
   const [books, setBooks] = useState<Book[]>([]);
@@ -616,6 +646,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
   const [searchText, setSearchText] = useState(query);
   const [bookFormatFilter, setBookFormatFilter] = useState(bookFormat);
   const [categoryFilter, setCategoryFilter] = useState(category);
+  const [readingStatusFilter, setReadingStatusFilter] = useState(readingStatus);
   const [sortValue, setSortValue] = useState<SortOption>(sort);
   const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
 
@@ -623,14 +654,15 @@ function BooksPage({ accessToken }: { accessToken: string }) {
     setSearchText(query);
     setBookFormatFilter(bookFormat);
     setCategoryFilter(category);
+    setReadingStatusFilter(readingStatus);
     setSortValue(sort);
-  }, [query, bookFormat, category, sort]);
+  }, [query, bookFormat, category, readingStatus, sort]);
 
   useEffect(() => {
     const load = async (): Promise<void> => {
       setLoading(true);
       try {
-        const result = await getBooks(accessToken, { query, bookFormat, category });
+        const result = await getBooks(accessToken, { query, bookFormat, category, readingStatus });
         setBooks(sortBooks(result.items, sort));
       } finally {
         setLoading(false);
@@ -638,7 +670,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
     };
 
     void load();
-  }, [accessToken, query, bookFormat, category, sort]);
+  }, [accessToken, query, bookFormat, category, readingStatus, sort]);
 
   const rows = chunkBooks(books, 5);
 
@@ -647,6 +679,7 @@ function BooksPage({ accessToken }: { accessToken: string }) {
     if (searchText.trim()) nextParams.set("q", searchText.trim());
     if (bookFormatFilter) nextParams.set("bookFormat", bookFormatFilter);
     if (categoryFilter) nextParams.set("category", categoryFilter);
+    if (readingStatusFilter) nextParams.set("readingStatus", readingStatusFilter);
     if (sortValue !== "newest") nextParams.set("sort", sortValue);
     navigate(`/books${nextParams.toString() ? `?${nextParams.toString()}` : ""}`);
   };
@@ -694,6 +727,15 @@ function BooksPage({ accessToken }: { accessToken: string }) {
               ))}
             </select>
           </label>
+          <label>
+            <span>読書ステータス</span>
+            <select value={readingStatusFilter} onChange={(event) => setReadingStatusFilter(event.target.value)}>
+              <option value="">すべて</option>
+              {readingStatuses.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </label>
           <button className="secondary-pill" onClick={applyFilters}>
             絞り込む
           </button>
@@ -724,12 +766,15 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [readingStatus, setReadingStatus] = useState<ReadingStatus>(defaultReadingStatus);
+  const [savingStatus, setSavingStatus] = useState(false);
 
   useEffect(() => {
     const load = async (): Promise<void> => {
       try {
         const result = await getBook(accessToken, isbn);
         setBook(result);
+        setReadingStatus(result.readingStatus);
         setNotFound(false);
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
@@ -759,6 +804,26 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
     }
   };
 
+  const handleUpdateReadingStatus = async (): Promise<void> => {
+    if (!book) {
+      return;
+    }
+
+    setSavingStatus(true);
+    setMessage(null);
+
+    try {
+      const updated = await updateBookStatus(accessToken, isbn, readingStatus);
+      setBook(updated);
+      setReadingStatus(updated.readingStatus);
+      setMessage("読書ステータスを更新しました。");
+    } catch {
+      setMessage("読書ステータスの更新に失敗しました。");
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
   return (
     <AppLayout title="書籍詳細" subtitle={book?.title ?? "蔵書の詳細を見る"}>
       <section className="panel detail-panel">
@@ -777,15 +842,34 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
                 <div className="chip-row">
                   <TagChip>{book.category}</TagChip>
                   <TagChip tone="outline">{book.bookFormat}</TagChip>
+                  <TagChip>{book.readingStatus}</TagChip>
                 </div>
                 <h2>{book.title}</h2>
                 <p><strong>著者:</strong> {book.author || "-"}</p>
                 <p><strong>出版社:</strong> {book.publisher || "-"}</p>
                 <p><strong>出版日:</strong> {book.publishedDate || "-"}</p>
                 <p><strong>ISBN:</strong> {book.isbn}</p>
+                <p><strong>読書ステータス:</strong> {book.readingStatus}</p>
                 <p><strong>登録日時:</strong> {formatDateTime(book.createdAt)}</p>
               </div>
             </div>
+            <div className="classification-grid">
+              <label>
+                <span>読書ステータス</span>
+                <select
+                  value={readingStatus}
+                  onChange={(event) => setReadingStatus(event.target.value as ReadingStatus)}
+                  disabled={savingStatus}
+                >
+                  {readingStatuses.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <button className="primary-pill" onClick={() => void handleUpdateReadingStatus()} disabled={savingStatus}>
+              {savingStatus ? "更新中..." : "ステータスを保存"}
+            </button>
             <button className="danger-pill" onClick={() => void handleDelete()}>
               削除する
             </button>
@@ -854,6 +938,7 @@ function RecentBookCard({ book }: { book: Book }) {
         <div className="chip-row">
           <TagChip>{book.category}</TagChip>
           <TagChip tone="outline">{book.bookFormat}</TagChip>
+          <TagChip>{book.readingStatus}</TagChip>
         </div>
         <h4 title={book.title}>{book.title || "タイトル未設定"}</h4>
         <p className="author-line">{book.author || "著者情報なし"}</p>
@@ -914,6 +999,7 @@ function BookshelfRow({
                     <div className="chip-row">
                       <TagChip>{book.category}</TagChip>
                       <TagChip tone="outline">{book.bookFormat}</TagChip>
+                      <TagChip>{book.readingStatus}</TagChip>
                     </div>
                     <strong title={book.title}>{book.title || "タイトル未設定"}</strong>
                     <span>{book.author || "著者情報なし"}</span>

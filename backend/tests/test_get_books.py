@@ -15,6 +15,7 @@ def test_get_books_filters_by_title_and_classifications(
         "q": "python",
         "bookFormat": "新書",
         "category": "技術書",
+        "readingStatus": "未読",
     }
     table = Mock()
     table.query.return_value = {
@@ -26,6 +27,7 @@ def test_get_books_filters_by_title_and_classifications(
                 "author": "A",
                 "bookFormat": "新書",
                 "category": "技術書",
+                "readingStatus": "未読",
                 "createdAt": "2026-03-16T12:00:00+00:00",
             },
             {
@@ -35,6 +37,7 @@ def test_get_books_filters_by_title_and_classifications(
                 "author": "B",
                 "bookFormat": "単行本",
                 "category": "ビジネス",
+                "readingStatus": "読書中",
                 "createdAt": "2026-03-15T12:00:00+00:00",
             },
         ]
@@ -56,7 +59,7 @@ def test_get_books_search_matches_author(lambda_event: dict[str, object]) -> Non
             {
                 "userId": "user-123",
                 "isbn": "9781111111111",
-                "title": "統計の本",
+                "title": "技術の本",
                 "author": "Taro Suzuki",
                 "createdAt": "2026-03-16T12:00:00+00:00",
             },
