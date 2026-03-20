@@ -675,15 +675,45 @@ function BooksPage({ accessToken }: { accessToken: string }) {
     void load();
   }, [accessToken, query, bookFormat, category, readingStatus, sort]);
 
-  const applyFilters = (): void => {
+  const buildFilterSearch = (): string => {
     const nextParams = new URLSearchParams();
     if (searchText.trim()) nextParams.set("q", searchText.trim());
     if (bookFormatFilter) nextParams.set("bookFormat", bookFormatFilter);
     if (categoryFilter) nextParams.set("category", categoryFilter);
     if (readingStatusFilter) nextParams.set("readingStatus", readingStatusFilter);
     if (sortValue !== "newest") nextParams.set("sort", sortValue);
-    navigate(`/books${nextParams.toString() ? `?${nextParams.toString()}` : ""}`);
+    return nextParams.toString();
   };
+
+  const applyFilters = (): void => {
+    const nextSearch = buildFilterSearch();
+    navigate(`/books${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
+  };
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const nextSearch = buildFilterSearch();
+      const currentSearch = location.search.startsWith("?")
+        ? location.search.slice(1)
+        : location.search;
+
+      if (nextSearch === currentSearch) {
+        return;
+      }
+
+      navigate(`/books${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
+    }, 200);
+
+    return () => window.clearTimeout(handle);
+  }, [
+    searchText,
+    bookFormatFilter,
+    categoryFilter,
+    readingStatusFilter,
+    sortValue,
+    location.search,
+    navigate,
+  ]);
 
   return (
     <AppLayout title="蔵書一覧" subtitle="本棚を眺めるように管理する">
@@ -698,7 +728,10 @@ function BooksPage({ accessToken }: { accessToken: string }) {
             onChange={setSearchText}
             placeholder="タイトル・著者で検索"
             submitLabel="検索"
-            onSubmit={applyFilters}
+            onSubmit={() => {
+              const nextSearch = buildFilterSearch();
+              navigate(`/books${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
+            }}
           />
         </div>
         <div className="toolbar-controls">
