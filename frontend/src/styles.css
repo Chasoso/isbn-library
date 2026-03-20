@@ -530,6 +530,12 @@ select {
     linear-gradient(180deg, rgba(255, 252, 246, 0.86), rgba(244, 235, 220, 0.9));
   border: 1px solid rgba(167, 136, 97, 0.12);
   overflow: hidden;
+  cursor: grab;
+  touch-action: pan-x;
+}
+
+.coverflow-stage-wrap.is-dragging {
+  cursor: grabbing;
 }
 
 .coverflow-visual-stage {

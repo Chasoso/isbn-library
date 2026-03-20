@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+} from "react";
 import { Link } from "react-router-dom";
 import type { Book } from "../types";
 
@@ -27,6 +35,13 @@ export function CoverFlowShelf({
 }: CoverFlowShelfProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const railItemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const dragStateRef = useRef({
+    pointerId: -1,
+    startX: 0,
+    startScrollLeft: 0,
+    suppressClick: false,
+  });
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     railItemRefs.current = railItemRefs.current.slice(0, books.length);
@@ -80,6 +95,11 @@ export function CoverFlowShelf({
   };
 
   const focusIndex = (index: number): void => {
+    if (dragStateRef.current.suppressClick) {
+      dragStateRef.current.suppressClick = false;
+      return;
+    }
+
     const item = railItemRefs.current[index];
     if (!item) {
       return;
@@ -93,11 +113,77 @@ export function CoverFlowShelf({
     });
   };
 
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const rail = railRef.current;
+    if (!rail) {
+      return;
+    }
+
+    dragStateRef.current.pointerId = event.pointerId;
+    dragStateRef.current.startX = event.clientX;
+    dragStateRef.current.startScrollLeft = rail.scrollLeft;
+    dragStateRef.current.suppressClick = false;
+    setIsDragging(false);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const rail = railRef.current;
+    if (!rail || dragStateRef.current.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - dragStateRef.current.startX;
+    if (Math.abs(deltaX) > 4) {
+      setIsDragging(true);
+      dragStateRef.current.suppressClick = true;
+    }
+
+    rail.scrollLeft = dragStateRef.current.startScrollLeft - deltaX;
+  };
+
+  const finishDrag = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (dragStateRef.current.pointerId !== event.pointerId) {
+      return;
+    }
+
+    dragStateRef.current.pointerId = -1;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    window.setTimeout(() => {
+      dragStateRef.current.suppressClick = false;
+    }, 0);
+    setIsDragging(false);
+  };
+
+  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>): void => {
+    const rail = railRef.current;
+    if (!rail) {
+      return;
+    }
+
+    const delta =
+      Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+
+    if (delta === 0) {
+      return;
+    }
+
+    rail.scrollLeft += delta;
+    event.preventDefault();
+  };
+
   const selectedBook = books[activeIndex] ?? null;
 
   return (
     <section className="coverflow-shell">
-      <div className="coverflow-stage-wrap">
+      <div
+        className={`coverflow-stage-wrap ${isDragging ? "is-dragging" : ""}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishDrag}
+        onPointerCancel={finishDrag}
+        onWheel={handleWheel}
+      >
         <div
           className="coverflow-visual-stage"
           role="region"
