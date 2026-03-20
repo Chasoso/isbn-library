@@ -253,19 +253,19 @@ function HomePage({ authState }: { authState: AuthState }) {
               label: "総冊数",
               value: `${books.length}`,
               tone: "teal",
-              caption: books.length > 0 ? "現在管理中の蔵書" : "まずは最初の1冊を登録",
+              caption: books.length > 0 ? "蔵書を管理中" : "最初の1冊を登録",
             },
             {
               label: "今月の追加",
               value: `+${monthlyCount}`,
               tone: "sky",
-              caption: monthlyCount > 0 ? "最近の登録ペース" : "今月の追加はまだありません",
+              caption: monthlyCount > 0 ? "今月の登録数" : "追加はまだありません",
             },
             {
               label: "最終登録",
               value: lastAdded ? formatRelativeTime(lastAdded) : "未登録",
               tone: "amber",
-              caption: lastAdded ? formatDateTime(lastAdded) : `${categoryCount} カテゴリ管理中`,
+              caption: lastAdded ? formatDateTime(lastAdded) : `${categoryCount}カテゴリ`,
             },
           ]}
         />
@@ -887,6 +887,7 @@ function BookshelfRow({
       <div className="bookshelf-track">
         {books.map((book) => {
           const isSelected = selectedIsbn === book.isbn;
+          const hasCoverImage = Boolean(book.coverImageUrl);
 
           return (
             <article key={book.isbn} className={`bookshelf-book ${isSelected ? "is-selected" : ""}`}>
@@ -898,7 +899,9 @@ function BookshelfRow({
               >
                 <CoverArt book={book} className="bookshelf-cover-art" />
                 <span className="bookshelf-cover-shadow" aria-hidden="true" />
-                <span className="spine-accent" style={{ background: coverAccent(book.isbn) }} />
+                {!hasCoverImage ? (
+                  <span className="spine-accent" style={{ background: coverAccent(book.isbn) }} />
+                ) : null}
                 <span className="bookshelf-spine-copy">
                   <span className="spine-title" title={book.title}>{book.title || "タイトル未設定"}</span>
                   <span className="spine-author">{book.author || "著者不明"}</span>
