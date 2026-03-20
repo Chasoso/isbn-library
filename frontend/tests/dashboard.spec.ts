@@ -29,4 +29,16 @@ test.describe("frontend dashboard visuals", () => {
       fullPage: true,
     });
   });
+
+  test("book detail page captures desktop layout", async ({ page }, testInfo) => {
+    await page.goto("/books/9784860648114");
+    await expect(page.locator(".detail-grid")).toBeVisible();
+    await expect(page.locator(".detail-status-panel")).toBeVisible();
+    await expect(page.locator(".detail-actions")).toBeVisible();
+
+    await page.screenshot({
+      path: testInfo.outputPath("book-detail-desktop.png"),
+      fullPage: true,
+    });
+  });
 });

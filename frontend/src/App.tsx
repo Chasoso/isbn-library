@@ -250,8 +250,6 @@ function HomePage({ authState }: { authState: AuthState }) {
 
   const recentBooks = books.slice(0, 6);
   const monthlyCount = books.filter((book) => isInCurrentMonth(book.createdAt)).length;
-  const lastAdded = books[0]?.createdAt ?? null;
-  const categoryCount = new Set(books.map((book) => book.category)).size;
 
   return (
     <AppLayout title="ホーム" subtitle={authState.name ? `${authState.name}さんの蔵書ダッシュボード` : null}>
@@ -276,12 +274,6 @@ function HomePage({ authState }: { authState: AuthState }) {
               value: `+${monthlyCount}`,
               tone: "sky",
               caption: monthlyCount > 0 ? "今月の登録数" : "追加はまだありません",
-            },
-            {
-              label: "最終登録",
-              value: lastAdded ? formatRelativeTime(lastAdded) : "未登録",
-              tone: "amber",
-              caption: lastAdded ? formatDateTime(lastAdded) : `${categoryCount}カテゴリ`,
             },
           ]}
         />
@@ -858,13 +850,13 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <AppLayout title="書籍詳細" subtitle={book?.title ?? "蔵書の詳細を見る"}>
+    <AppLayout title={"書籍詳細"} subtitle={book?.title ?? "書籍の詳細を確認"}>
       <section className="panel detail-panel">
-        {loading ? <p className="empty-copy">書籍情報を読み込んでいます...</p> : null}
+        {loading ? <p className="empty-copy">{"書籍情報を読み込んでいます..."}</p> : null}
         {message ? <p className="subtle">{message}</p> : null}
         {notFound ? (
           <p>
-            <Link className="text-link" to="/books">蔵書一覧へ戻る</Link>
+            <Link className="text-link" to="/books">{"蔵書一覧へ戻る"}</Link>
           </p>
         ) : null}
         {book ? (
@@ -878,34 +870,38 @@ function BookDetailPage({ accessToken }: { accessToken: string }) {
                   <TagChip>{book.readingStatus}</TagChip>
                 </div>
                 <h2>{book.title}</h2>
-                <p><strong>著者:</strong> {book.author || "-"}</p>
-                <p><strong>出版社:</strong> {book.publisher || "-"}</p>
-                <p><strong>出版日:</strong> {book.publishedDate || "-"}</p>
+                <p><strong>{"著者:"}</strong> {book.author || "-"}</p>
+                <p><strong>{"出版社:"}</strong> {book.publisher || "-"}</p>
+                <p><strong>{"出版日:"}</strong> {book.publishedDate || "-"}</p>
                 <p><strong>ISBN:</strong> {book.isbn}</p>
-                <p><strong>読書ステータス:</strong> {book.readingStatus}</p>
-                <p><strong>登録日時:</strong> {formatDateTime(book.createdAt)}</p>
+                <p><strong>{"読書ステータス:"}</strong> {book.readingStatus}</p>
+                <p><strong>{"登録日時:"}</strong> {formatDateTime(book.createdAt)}</p>
               </div>
             </div>
-            <div className="classification-grid">
-              <label>
-                <span>読書ステータス</span>
-                <select
-                  value={readingStatus}
-                  onChange={(event) => setReadingStatus(event.target.value as ReadingStatus)}
-                  disabled={savingStatus}
-                >
-                  {readingStatuses.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </select>
-              </label>
+            <div className="detail-status-panel">
+              <div className="classification-grid detail-status-grid">
+                <label>
+                  <span>{"読書ステータス"}</span>
+                  <select
+                    value={readingStatus}
+                    onChange={(event) => setReadingStatus(event.target.value as ReadingStatus)}
+                    disabled={savingStatus}
+                  >
+                    {readingStatuses.map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="detail-actions">
+                <button className="primary-pill" onClick={() => void handleUpdateReadingStatus()} disabled={savingStatus}>
+                  {savingStatus ? "更新中..." : "ステータスを保存"}
+                </button>
+                <button className="danger-pill" onClick={() => void handleDelete()}>
+                  {"削除する"}
+                </button>
+              </div>
             </div>
-            <button className="primary-pill" onClick={() => void handleUpdateReadingStatus()} disabled={savingStatus}>
-              {savingStatus ? "更新中..." : "ステータスを保存"}
-            </button>
-            <button className="danger-pill" onClick={() => void handleDelete()}>
-              削除する
-            </button>
           </>
         ) : null}
       </section>
@@ -1121,11 +1117,15 @@ function isInCurrentMonth(value: string): boolean {
 }
 
 function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
+  return formatDate(value);
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "numeric", day: "numeric" }).format(new Date(value));
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toISOString().slice(0, 10);
 }
 
 function formatRelativeTime(value: string): string {

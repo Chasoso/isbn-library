@@ -930,6 +930,21 @@ select {
   gap: 18px;
 }
 
+.detail-grid > .cover-art.large,
+.detail-grid > .cover-fallback.large {
+  width: min(100%, 280px);
+  max-width: 100%;
+  min-height: 0;
+  aspect-ratio: 3 / 4.4;
+  justify-self: center;
+}
+
+.detail-copy {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
 .detail-copy p {
   margin: 0 0 8px;
 }
@@ -937,6 +952,23 @@ select {
 .classification-grid {
   display: grid;
   gap: 14px;
+}
+
+.detail-status-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.detail-actions .primary-pill,
+.detail-actions .danger-pill {
+  margin-top: 0;
 }
 
 .scan-tips {
@@ -1066,8 +1098,23 @@ select {
     grid-template-columns: minmax(0, 220px) 1fr;
   }
 
+  .detail-grid > .cover-art.large,
+  .detail-grid > .cover-fallback.large {
+    width: 100%;
+    max-width: 220px;
+  }
+
   .classification-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detail-status-panel {
+    grid-template-columns: minmax(280px, 340px) auto;
+    align-items: end;
+  }
+
+  .detail-status-grid {
+    max-width: 340px;
   }
 
   .library-toolbar-main {
