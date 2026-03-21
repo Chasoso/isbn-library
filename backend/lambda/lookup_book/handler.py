@@ -1,11 +1,12 @@
 import json
+import os
 import time
 from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-from shared.constants import GOOGLE_BOOKS_API_URL
+from shared.constants import GOOGLE_BOOKS_API_KEY_ENV, GOOGLE_BOOKS_API_URL
 from shared.isbn import normalize_isbn
 from shared.responses import json_response
 
@@ -31,7 +32,12 @@ def extract_book(isbn: str, payload: dict[str, Any]) -> dict[str, str] | None:
 
 
 def fetch_google_books_payload(isbn: str) -> dict[str, Any]:
-    query = urlencode({"q": f"isbn:{isbn}", "maxResults": 1})
+    query_params = {"q": f"isbn:{isbn}", "maxResults": 1}
+    api_key = os.getenv(GOOGLE_BOOKS_API_KEY_ENV, "").strip()
+    if api_key:
+        query_params["key"] = api_key
+
+    query = urlencode(query_params)
     request = Request(
         f"{GOOGLE_BOOKS_API_URL}?{query}",
         headers={

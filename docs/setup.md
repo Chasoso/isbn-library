@@ -44,7 +44,10 @@ $env:COGNITO_DOMAIN_PREFIX = "isbn-library-yourname"
 $env:COGNITO_CALLBACK_URLS = "http://localhost:5173/auth/callback,https://main.xxxxxx.amplifyapp.com/auth/callback"
 $env:COGNITO_LOGOUT_URLS = "http://localhost:5173,https://main.xxxxxx.amplifyapp.com"
 $env:CORS_ALLOW_ORIGINS = "http://localhost:5173,https://main.xxxxxx.amplifyapp.com"
+$env:GOOGLE_BOOKS_API_KEY = "your-google-books-api-key"
 ```
+
+`GOOGLE_BOOKS_API_KEY` は任意です。設定した場合のみ lookup Lambda が `key=` を付けて Google Books API を呼び出します。未設定なら、これまでどおり API キーなしでリクエストします。
 
 ## 4. インフラデプロイ
 

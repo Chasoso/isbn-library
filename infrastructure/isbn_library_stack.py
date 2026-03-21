@@ -41,6 +41,7 @@ class IsbnLibraryStack(Stack):
             "CORS_ALLOW_ORIGINS",
             ["http://localhost:5173"],
         )
+        google_books_api_key = os.getenv("GOOGLE_BOOKS_API_KEY", "")
 
         books_table = dynamodb.Table(
             self,
@@ -115,6 +116,7 @@ class IsbnLibraryStack(Stack):
 
         common_environment = {
             "BOOKS_TABLE_NAME": books_table.table_name,
+            "GOOGLE_BOOKS_API_KEY": google_books_api_key,
         }
 
         common_lambda_props = {

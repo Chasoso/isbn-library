@@ -17,6 +17,11 @@ Lambda テスト専用のワークフローは [backend-tests.yml](/d:/Git/isbn-
 ## 前提
 
 - GitHub リポジトリが存在する
+
+- `AWS_DEPLOY_ROLE_ARN`
+- `GOOGLE_BOOKS_API_KEY` (optional)
+
+`GOOGLE_BOOKS_API_KEY` is passed only to the `cdk deploy` step via GitHub Secrets and is not echoed in the workflow logs. If it is not set, the lookup Lambda continues calling Google Books API without an API key.
 - Amplify Hosting に対象アプリが作成済み
 - CDK の初回 `bootstrap` が済んでいる
 - GitHub Actions から AWS にアクセスできる IAM Role を用意する

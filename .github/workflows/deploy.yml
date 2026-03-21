@@ -152,6 +152,7 @@ jobs:
           COGNITO_CALLBACK_URLS: ${{ vars.COGNITO_CALLBACK_URLS }}
           COGNITO_LOGOUT_URLS: ${{ vars.COGNITO_LOGOUT_URLS }}
           CORS_ALLOW_ORIGINS: ${{ vars.CORS_ALLOW_ORIGINS }}
+          GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
           CDK_DEFAULT_ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ${{ vars.AWS_REGION }}
 

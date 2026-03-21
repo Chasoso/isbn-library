@@ -40,6 +40,8 @@ cdk synth
 cdk deploy
 ```
 
+Google Books API キーを使う場合だけ、`cdk deploy` 前に `GOOGLE_BOOKS_API_KEY` を環境変数へ設定してください。未設定ならキーなしで Google Books API を呼び出します。
+
 ## 初期ユーザー作成
 
 自己サインアップは無効です。初期ユーザーは Cognito コンソールから手動で作成します。
