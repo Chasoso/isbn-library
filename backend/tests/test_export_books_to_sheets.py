@@ -130,7 +130,14 @@ def test_export_books_to_sheets_handles_paginated_scans(
         ),
         patch.object(export_handler, "get_books_table", return_value=books_table),
         patch.object(export_handler, "get_categories_table", return_value=categories_table),
-        patch.object(export_handler, "get_parameter_payload", return_value={}),
+        patch.object(
+            export_handler,
+            "get_parameter_payload",
+            return_value={
+                "type": "external_account",
+                "audience": "//iam.googleapis.com/projects/1/locations/global/workloadIdentityPools/pool/providers/aws",
+            },
+        ),
         patch.object(
             export_handler,
             "load_credentials_from_dict",
@@ -194,7 +201,14 @@ def test_export_books_to_sheets_returns_500_when_google_api_fails(
         ),
         patch.object(export_handler, "get_books_table", return_value=books_table),
         patch.object(export_handler, "get_categories_table", return_value=categories_table),
-        patch.object(export_handler, "get_parameter_payload", return_value={}),
+        patch.object(
+            export_handler,
+            "get_parameter_payload",
+            return_value={
+                "type": "external_account",
+                "audience": "//iam.googleapis.com/projects/1/locations/global/workloadIdentityPools/pool/providers/aws",
+            },
+        ),
         patch.object(
             export_handler,
             "load_credentials_from_dict",
@@ -206,3 +220,60 @@ def test_export_books_to_sheets_returns_500_when_google_api_fails(
 
     assert status_code == 500
     assert "Failed to export books to Google Sheets" in body["message"]
+
+
+def test_export_books_to_sheets_rejects_invalid_audience_format(
+    lambda_event: dict[str, object],
+) -> None:
+    with (
+        patch.dict(
+            "os.environ",
+            {
+                "GOOGLE_SHEETS_SPREADSHEET_ID": "spreadsheet-123",
+                "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME": "/isbn-library/google-wif-config",
+            },
+            clear=False,
+        ),
+        patch.object(
+            export_handler,
+            "get_parameter_payload",
+            return_value={"type": "external_account", "audience": "invalid-audience"},
+        ),
+    ):
+        status_code, body = parse_response(export_handler.handler(lambda_event, None))
+
+    assert status_code == 500
+    assert "audience must start with //iam.googleapis.com/projects/" in body["message"]
+
+
+def test_export_books_to_sheets_surfaces_invalid_target_with_audience(
+    lambda_event: dict[str, object],
+) -> None:
+    invalid_target_error = Exception(
+        'Error code invalid_target: The target service indicated by the "audience" parameters is invalid.'
+    )
+
+    with (
+        patch.dict(
+            "os.environ",
+            {
+                "GOOGLE_SHEETS_SPREADSHEET_ID": "spreadsheet-123",
+                "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME": "/isbn-library/google-wif-config",
+            },
+            clear=False,
+        ),
+        patch.object(
+            export_handler,
+            "get_parameter_payload",
+            return_value={
+                "type": "external_account",
+                "audience": "//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/pool/providers/provider",
+            },
+        ),
+        patch.object(export_handler, "build_access_token", side_effect=invalid_target_error),
+    ):
+        status_code, body = parse_response(export_handler.handler(lambda_event, None))
+
+    assert status_code == 500
+    assert "invalid_target from Google STS" in body["message"]
+    assert "audience=//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/pool/providers/provider" in body["message"]

@@ -59,7 +59,18 @@ def get_parameter_payload(parameter_name: str) -> dict[str, Any]:
     return json.loads(response["Parameter"]["Value"])
 
 
+def validate_credential_config(credential_config: dict[str, Any]) -> None:
+    audience = str(credential_config.get("audience", ""))
+    if credential_config.get("type") != "external_account":
+        raise ValueError("WIF credential config type must be external_account")
+    if not audience.startswith("//iam.googleapis.com/projects/"):
+        raise ValueError(
+            "WIF credential config audience must start with //iam.googleapis.com/projects/"
+        )
+
+
 def build_access_token(credential_config: dict[str, Any]) -> str:
+    validate_credential_config(credential_config)
     credentials, _project_id = load_credentials_from_dict(
         credential_config,
         scopes=[GOOGLE_SHEETS_SCOPE],
@@ -209,6 +220,7 @@ def update_sheets(
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
+    credential_audience = ""
     try:
         log_request("export_books_to_sheets", event)
         spreadsheet_id = get_env(GOOGLE_SHEETS_SPREADSHEET_ID_ENV)
@@ -232,6 +244,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             )
 
         credential_config = get_parameter_payload(parameter_name)
+        credential_audience = str(credential_config.get("audience", ""))
         access_token = build_access_token(credential_config)
 
         category_items = scan_all_items(get_categories_table())
@@ -269,7 +282,14 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             ),
         )
     except Exception as error:
+        message = f"Failed to export books to Google Sheets: {error}"
+        if "invalid_target" in str(error):
+            message = (
+                "Failed to export books to Google Sheets: invalid_target from Google STS. "
+                "Check that the WIF audience matches an existing and enabled pool/provider. "
+                f"audience={credential_audience}"
+            )
         return log_response(
             "export_books_to_sheets",
-            json_response(500, {"message": f"Failed to export books to Google Sheets: {error}"}),
+            json_response(500, {"message": message}),
         )
