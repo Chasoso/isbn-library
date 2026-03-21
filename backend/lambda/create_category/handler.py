@@ -12,23 +12,25 @@ from shared.categories import (
     normalize_category_name,
 )
 from shared.dynamo import get_categories_table
+from shared.logging_utils import log_request, log_response
 from shared.responses import json_response
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     try:
         user_id = get_user_id(event)
+        log_request("create_category", event, user_id)
         payload = json.loads(event.get("body") or "{}")
         name = str(payload.get("name", "")).strip()
         color = str(payload.get("color", "")).strip()
 
         if not name:
-            return json_response(400, {"message": "Category name is required"})
+            return log_response("create_category", json_response(400, {"message": "Category name is required"}))
 
         existing = list_categories(user_id)
         normalized_name = normalize_category_name(name)
         if any(item.get("normalizedName") == normalized_name for item in existing):
-            return json_response(409, {"message": "Category already exists"})
+            return log_response("create_category", json_response(409, {"message": "Category already exists"}))
 
         sort_order = (
             max((int(item.get("sortOrder", 0)) for item in existing), default=0) + 10
@@ -45,10 +47,10 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             Item=item,
             ConditionExpression="attribute_not_exists(userId) AND attribute_not_exists(categoryId)",
         )
-        return json_response(201, category_response(item))
+        return log_response("create_category", json_response(201, category_response(item)))
     except ClientError as error:
         if error.response["Error"]["Code"] == "ConditionalCheckFailedException":
-            return json_response(409, {"message": "Category already exists"})
-        return json_response(500, {"message": f"Failed to create category: {error}"})
+            return log_response("create_category", json_response(409, {"message": "Category already exists"}))
+        return log_response("create_category", json_response(500, {"message": f"Failed to create category: {error}"}))
     except Exception as error:
-        return json_response(500, {"message": f"Failed to create category: {error}"})
+        return log_response("create_category", json_response(500, {"message": f"Failed to create category: {error}"}))
