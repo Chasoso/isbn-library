@@ -6,37 +6,41 @@ from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
 from conftest import load_handler_module, parse_response
-from shared.catalog import BOOK_FORMATS, CATEGORIES, DEFAULT_BOOK_FORMAT, DEFAULT_CATEGORY
+from shared.catalog import BOOK_FORMATS, DEFAULT_BOOK_FORMAT
 from shared.statuses import DEFAULT_READING_STATUS, READING_STATUSES
 
 
 create_book_handler = load_handler_module("create_book")
 VALID_BOOK_FORMAT = next(iter(BOOK_FORMATS - {DEFAULT_BOOK_FORMAT}))
-VALID_CATEGORY = next(iter(CATEGORIES - {DEFAULT_CATEGORY}))
 VALID_READING_STATUS = next(iter(READING_STATUSES - {DEFAULT_READING_STATUS}))
+VALID_CATEGORY = {"categoryId": "technology", "name": "技術書"}
 
 
 def test_create_book_success(lambda_event: dict[str, object]) -> None:
     table = Mock()
     lambda_event["body"] = json.dumps(
         {
-            "isbn": "9784860648114",
-            "title": "Sample",
-            "author": "Author",
-            "bookFormat": VALID_BOOK_FORMAT,
-            "category": VALID_CATEGORY,
-            "readingStatus": VALID_READING_STATUS,
+          "isbn": "9784860648114",
+          "title": "Sample",
+          "author": "Author",
+          "bookFormat": VALID_BOOK_FORMAT,
+          "categoryId": VALID_CATEGORY["categoryId"],
+          "readingStatus": VALID_READING_STATUS,
         },
         ensure_ascii=False,
     )
 
-    with patch.object(create_book_handler, "get_books_table", return_value=table):
+    with (
+        patch.object(create_book_handler, "get_books_table", return_value=table),
+        patch.object(create_book_handler, "get_category", return_value=VALID_CATEGORY),
+    ):
         status_code, body = parse_response(create_book_handler.handler(lambda_event, None))
 
     assert status_code == 201
     assert body["isbn"] == "9784860648114"
     assert body["bookFormat"] == VALID_BOOK_FORMAT
-    assert body["category"] == VALID_CATEGORY
+    assert body["categoryId"] == VALID_CATEGORY["categoryId"]
+    assert body["categoryName"] == VALID_CATEGORY["name"]
     assert body["readingStatus"] == VALID_READING_STATUS
     table.put_item.assert_called_once()
 
@@ -52,13 +56,16 @@ def test_create_book_returns_409_for_duplicate(lambda_event: dict[str, object]) 
             "isbn": "9784860648114",
             "title": "Sample",
             "bookFormat": VALID_BOOK_FORMAT,
-            "category": VALID_CATEGORY,
+            "categoryId": VALID_CATEGORY["categoryId"],
             "readingStatus": VALID_READING_STATUS,
         },
         ensure_ascii=False,
     )
 
-    with patch.object(create_book_handler, "get_books_table", return_value=table):
+    with (
+        patch.object(create_book_handler, "get_books_table", return_value=table),
+        patch.object(create_book_handler, "get_category", return_value=VALID_CATEGORY),
+    ):
         status_code, body = parse_response(create_book_handler.handler(lambda_event, None))
 
     assert status_code == 409
@@ -71,13 +78,14 @@ def test_create_book_rejects_invalid_reading_status(lambda_event: dict[str, obje
             "isbn": "9784860648114",
             "title": "Sample",
             "bookFormat": VALID_BOOK_FORMAT,
-            "category": VALID_CATEGORY,
+            "categoryId": VALID_CATEGORY["categoryId"],
             "readingStatus": "invalid-status",
         },
         ensure_ascii=False,
     )
 
-    status_code, body = parse_response(create_book_handler.handler(lambda_event, None))
+    with patch.object(create_book_handler, "get_category", return_value=VALID_CATEGORY):
+        status_code, body = parse_response(create_book_handler.handler(lambda_event, None))
 
     assert status_code == 400
     assert body["message"] == "Invalid readingStatus"
@@ -89,7 +97,7 @@ def test_create_book_rejects_invalid_book_format(lambda_event: dict[str, object]
             "isbn": "9784860648114",
             "title": "Sample",
             "bookFormat": "invalid-format",
-            "category": VALID_CATEGORY,
+            "categoryId": VALID_CATEGORY["categoryId"],
             "readingStatus": VALID_READING_STATUS,
         },
         ensure_ascii=False,
@@ -107,16 +115,17 @@ def test_create_book_rejects_invalid_category(lambda_event: dict[str, object]) -
             "isbn": "9784860648114",
             "title": "Sample",
             "bookFormat": VALID_BOOK_FORMAT,
-            "category": "invalid-category",
+            "categoryId": "invalid-category",
             "readingStatus": VALID_READING_STATUS,
         },
         ensure_ascii=False,
     )
 
-    status_code, body = parse_response(create_book_handler.handler(lambda_event, None))
+    with patch.object(create_book_handler, "get_category", return_value=None):
+        status_code, body = parse_response(create_book_handler.handler(lambda_event, None))
 
     assert status_code == 400
-    assert body["message"] == "Invalid category"
+    assert body["message"] == "Invalid categoryId"
 
 
 def test_create_book_returns_500_for_unexpected_client_error(lambda_event: dict[str, object]) -> None:
@@ -130,13 +139,16 @@ def test_create_book_returns_500_for_unexpected_client_error(lambda_event: dict[
             "isbn": "9784860648114",
             "title": "Sample",
             "bookFormat": VALID_BOOK_FORMAT,
-            "category": VALID_CATEGORY,
+            "categoryId": VALID_CATEGORY["categoryId"],
             "readingStatus": VALID_READING_STATUS,
         },
         ensure_ascii=False,
     )
 
-    with patch.object(create_book_handler, "get_books_table", return_value=table):
+    with (
+        patch.object(create_book_handler, "get_books_table", return_value=table),
+        patch.object(create_book_handler, "get_category", return_value=VALID_CATEGORY),
+    ):
         status_code, body = parse_response(create_book_handler.handler(lambda_event, None))
 
     assert status_code == 500

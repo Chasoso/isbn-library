@@ -40,6 +40,11 @@ cdk synth
 cdk deploy
 ```
 
+必要ならテーブル名は環境変数で上書きできます。
+
+- `BOOKS_TABLE_NAME` 例: `books`
+- `CATEGORIES_TABLE_NAME` 例: `book-category`
+
 Google Books API キーを使う場合だけ、`cdk deploy` 前に `GOOGLE_BOOKS_API_KEY` を環境変数へ設定してください。未設定ならキーなしで Google Books API を呼び出します。
 
 ## 初期ユーザー作成
@@ -90,6 +95,18 @@ Amplify Hosting の Basic 認証はアプリ外設定です。本リポジトリ
 - `POST /books`
 - `DELETE /books/{isbn}`
 - `GET /lookup/{isbn}`
+- `GET /categories`
+- `POST /categories`
+- `PATCH /categories/{categoryId}`
+
+## Categories
+
+カテゴリは静的配列ではなく `categories` テーブルで管理します。書籍データはカテゴリ名ではなく
+`categoryId` を保存し、API 応答では表示用の `categoryName` も返します。
+
+- `POST /books` の登録 payload は `category` ではなく `categoryId`
+- `GET /books` の絞り込み query は `category` ではなく `categoryId`
+- フロントから `/categories` でカテゴリ追加・名称変更が可能
 
 ## 分類
 

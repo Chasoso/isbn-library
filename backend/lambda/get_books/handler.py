@@ -4,7 +4,8 @@ from boto3.dynamodb.conditions import Key
 
 from shared.auth import get_user_id
 from shared.books import to_book_response
-from shared.catalog import DEFAULT_BOOK_FORMAT, DEFAULT_CATEGORY
+from shared.catalog import DEFAULT_BOOK_FORMAT
+from shared.categories import get_categories_by_id
 from shared.dynamo import get_books_table
 from shared.responses import json_response
 from shared.statuses import DEFAULT_READING_STATUS
@@ -16,7 +17,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         query_params = event.get("queryStringParameters") or {}
         query_text = (query_params.get("q") or "").strip().lower()
         book_format = (query_params.get("bookFormat") or "").strip()
-        category = (query_params.get("category") or "").strip()
+        category_id = (query_params.get("categoryId") or "").strip()
         reading_status = (query_params.get("readingStatus") or "").strip()
 
         table = get_books_table()
@@ -38,11 +39,11 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
                 if item.get("bookFormat", DEFAULT_BOOK_FORMAT) == book_format
             ]
 
-        if category:
+        if category_id:
             items = [
                 item
                 for item in items
-                if item.get("category", DEFAULT_CATEGORY) == category
+                if item.get("categoryId", "") == category_id
             ]
 
         if reading_status:
@@ -53,7 +54,19 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             ]
 
         items = sorted(items, key=lambda item: item.get("createdAt", ""), reverse=True)
+        categories_by_id = get_categories_by_id(user_id)
 
-        return json_response(200, {"items": [to_book_response(item) for item in items]})
+        return json_response(
+            200,
+            {
+                "items": [
+                    to_book_response(
+                        item,
+                        category_name=categories_by_id.get(item.get("categoryId", ""), {}).get("name"),
+                    )
+                    for item in items
+                ]
+            },
+        )
     except Exception as error:
         return json_response(500, {"message": f"Failed to list books: {error}"})

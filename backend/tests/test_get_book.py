@@ -29,18 +29,22 @@ def test_get_book_returns_book(lambda_event: dict[str, object]) -> None:
             "isbn": "9784860648114",
             "title": "Sample",
             "author": "Author",
-            "bookFormat": "譁ｰ譖ｸ",
-            "category": "謚陦捺嶌",
+            "bookFormat": "新書",
+            "categoryId": "technology",
         }
     }
 
-    with patch.object(get_book_handler, "get_books_table", return_value=table):
+    with (
+        patch.object(get_book_handler, "get_books_table", return_value=table),
+        patch.object(get_book_handler, "get_category", return_value={"name": "技術書"}),
+    ):
         status_code, body = parse_response(get_book_handler.handler(lambda_event, None))
 
     assert status_code == 200
     assert body["isbn"] == "9784860648114"
-    assert body["bookFormat"] == "譁ｰ譖ｸ"
-    assert body["category"] == "謚陦捺嶌"
+    assert body["bookFormat"] == "新書"
+    assert body["categoryId"] == "technology"
+    assert body["categoryName"] == "技術書"
 
 
 def test_get_book_rejects_invalid_isbn(lambda_event: dict[str, object]) -> None:

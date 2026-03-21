@@ -1,5 +1,14 @@
-import type { BookFormat, Category } from "./catalog";
+import type { BookFormat } from "./catalog";
 import type { ReadingStatus } from "./readingStatus";
+
+export interface CategoryDefinition {
+  categoryId: string;
+  name: string;
+  sortOrder: number;
+  color?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface Book {
   userId: string;
@@ -10,7 +19,8 @@ export interface Book {
   publishedDate: string;
   coverImageUrl: string;
   bookFormat: BookFormat;
-  category: Category;
+  categoryId: string;
+  categoryName: string;
   readingStatus: ReadingStatus;
   createdAt: string;
 }
@@ -26,8 +36,19 @@ export interface BookLookupResult {
 
 export interface CreateBookPayload extends BookLookupResult {
   bookFormat: BookFormat;
-  category: Category;
+  categoryId: string;
   readingStatus: ReadingStatus;
+}
+
+export interface CreateCategoryPayload {
+  name: string;
+  color?: string;
+}
+
+export interface UpdateCategoryPayload {
+  name?: string;
+  color?: string;
+  sortOrder?: number;
 }
 
 export interface AuthState {

@@ -1,5 +1,12 @@
 import { config } from "../config";
-import type { Book, BookLookupResult, CreateBookPayload } from "../types";
+import type {
+  Book,
+  BookLookupResult,
+  CategoryDefinition,
+  CreateBookPayload,
+  CreateCategoryPayload,
+  UpdateCategoryPayload,
+} from "../types";
 import { mockSession } from "./mockData";
 
 export class ApiError extends Error {
@@ -51,7 +58,7 @@ export const getBooks = async (
   filters?: {
     query?: string;
     bookFormat?: string;
-    category?: string;
+    categoryId?: string;
     readingStatus?: string;
   },
 ): Promise<{ items: Book[] }> => {
@@ -64,15 +71,12 @@ export const getBooks = async (
   if (filters?.query) {
     params.set("q", filters.query);
   }
-
   if (filters?.bookFormat) {
     params.set("bookFormat", filters.bookFormat);
   }
-
-  if (filters?.category) {
-    params.set("category", filters.category);
+  if (filters?.categoryId) {
+    params.set("categoryId", filters.categoryId);
   }
-
   if (filters?.readingStatus) {
     params.set("readingStatus", filters.readingStatus);
   }
@@ -141,5 +145,44 @@ export const updateBookStatus = async (
   return request<Book>(`/books/${isbn}/status`, accessToken, {
     method: "PATCH",
     body: JSON.stringify({ readingStatus }),
+  });
+};
+
+export const getCategories = async (
+  accessToken: string,
+): Promise<{ items: CategoryDefinition[] }> => {
+  if (config.e2eDemoMode) {
+    return mockSession.getCategories();
+  }
+
+  return request<{ items: CategoryDefinition[] }>("/categories", accessToken);
+};
+
+export const createCategory = async (
+  accessToken: string,
+  payload: CreateCategoryPayload,
+): Promise<CategoryDefinition> => {
+  if (config.e2eDemoMode) {
+    return mockSession.createCategory(payload);
+  }
+
+  return request<CategoryDefinition>("/categories", accessToken, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateCategory = async (
+  accessToken: string,
+  categoryId: string,
+  payload: UpdateCategoryPayload,
+): Promise<CategoryDefinition> => {
+  if (config.e2eDemoMode) {
+    return mockSession.updateCategory(categoryId, payload);
+  }
+
+  return request<CategoryDefinition>(`/categories/${categoryId}`, accessToken, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
   });
 };

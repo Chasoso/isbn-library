@@ -14,7 +14,7 @@ def test_get_books_filters_by_title_and_classifications(
     lambda_event["queryStringParameters"] = {
         "q": "python",
         "bookFormat": "新書",
-        "category": "技術書",
+        "categoryId": "technology",
         "readingStatus": "未読",
     }
     table = Mock()
@@ -26,7 +26,7 @@ def test_get_books_filters_by_title_and_classifications(
                 "title": "Python入門",
                 "author": "A",
                 "bookFormat": "新書",
-                "category": "技術書",
+                "categoryId": "technology",
                 "readingStatus": "未読",
                 "createdAt": "2026-03-16T12:00:00+00:00",
             },
@@ -36,19 +36,27 @@ def test_get_books_filters_by_title_and_classifications(
                 "title": "Python business",
                 "author": "B",
                 "bookFormat": "単行本",
-                "category": "ビジネス",
+                "categoryId": "business",
                 "readingStatus": "読書中",
                 "createdAt": "2026-03-15T12:00:00+00:00",
             },
         ]
     }
 
-    with patch.object(get_books_handler, "get_books_table", return_value=table):
+    with (
+        patch.object(get_books_handler, "get_books_table", return_value=table),
+        patch.object(
+            get_books_handler,
+            "get_categories_by_id",
+            return_value={"technology": {"name": "技術書"}},
+        ),
+    ):
         status_code, body = parse_response(get_books_handler.handler(lambda_event, None))
 
     assert status_code == 200
     assert len(body["items"]) == 1
     assert body["items"][0]["isbn"] == "9781111111111"
+    assert body["items"][0]["categoryName"] == "技術書"
 
 
 def test_get_books_search_matches_author(lambda_event: dict[str, object]) -> None:
@@ -73,7 +81,10 @@ def test_get_books_search_matches_author(lambda_event: dict[str, object]) -> Non
         ]
     }
 
-    with patch.object(get_books_handler, "get_books_table", return_value=table):
+    with (
+        patch.object(get_books_handler, "get_books_table", return_value=table),
+        patch.object(get_books_handler, "get_categories_by_id", return_value={}),
+    ):
         status_code, body = parse_response(get_books_handler.handler(lambda_event, None))
 
     assert status_code == 200
@@ -99,7 +110,10 @@ def test_get_books_returns_sorted_items(lambda_event: dict[str, object]) -> None
         ]
     }
 
-    with patch.object(get_books_handler, "get_books_table", return_value=table):
+    with (
+        patch.object(get_books_handler, "get_books_table", return_value=table),
+        patch.object(get_books_handler, "get_categories_by_id", return_value={}),
+    ):
         status_code, body = parse_response(get_books_handler.handler(lambda_event, None))
 
     assert status_code == 200

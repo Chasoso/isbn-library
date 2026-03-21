@@ -42,17 +42,35 @@ class IsbnLibraryStack(Stack):
             ["http://localhost:5173"],
         )
         google_books_api_key = os.getenv("GOOGLE_BOOKS_API_KEY", "")
+        books_table_name = os.getenv("BOOKS_TABLE_NAME", "books")
+        categories_table_name = os.getenv("CATEGORIES_TABLE_NAME", "book-category")
 
         books_table = dynamodb.Table(
             self,
             "BooksTable",
-            table_name="books",
+            table_name=books_table_name,
             partition_key=dynamodb.Attribute(
                 name="userId",
                 type=dynamodb.AttributeType.STRING,
             ),
             sort_key=dynamodb.Attribute(
                 name="isbn",
+                type=dynamodb.AttributeType.STRING,
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        categories_table = dynamodb.Table(
+            self,
+            "CategoriesTable",
+            table_name=categories_table_name,
+            partition_key=dynamodb.Attribute(
+                name="userId",
+                type=dynamodb.AttributeType.STRING,
+            ),
+            sort_key=dynamodb.Attribute(
+                name="categoryId",
                 type=dynamodb.AttributeType.STRING,
             ),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -116,6 +134,7 @@ class IsbnLibraryStack(Stack):
 
         common_environment = {
             "BOOKS_TABLE_NAME": books_table.table_name,
+            "CATEGORIES_TABLE_NAME": categories_table.table_name,
             "GOOGLE_BOOKS_API_KEY": google_books_api_key,
         }
 
@@ -134,7 +153,6 @@ class IsbnLibraryStack(Stack):
             handler="handler.handler",
             **common_lambda_props,
         )
-
         get_book_lambda = lambda_.Function(
             self,
             "GetBookLambda",
@@ -142,7 +160,6 @@ class IsbnLibraryStack(Stack):
             handler="handler.handler",
             **common_lambda_props,
         )
-
         create_book_lambda = lambda_.Function(
             self,
             "CreateBookLambda",
@@ -150,7 +167,6 @@ class IsbnLibraryStack(Stack):
             handler="handler.handler",
             **common_lambda_props,
         )
-
         delete_book_lambda = lambda_.Function(
             self,
             "DeleteBookLambda",
@@ -158,7 +174,6 @@ class IsbnLibraryStack(Stack):
             handler="handler.handler",
             **common_lambda_props,
         )
-
         update_book_status_lambda = lambda_.Function(
             self,
             "UpdateBookStatusLambda",
@@ -166,7 +181,6 @@ class IsbnLibraryStack(Stack):
             handler="handler.handler",
             **common_lambda_props,
         )
-
         lookup_book_lambda = lambda_.Function(
             self,
             "LookupBookLambda",
@@ -174,12 +188,47 @@ class IsbnLibraryStack(Stack):
             handler="handler.handler",
             **common_lambda_props,
         )
+        get_categories_lambda = lambda_.Function(
+            self,
+            "GetCategoriesLambda",
+            code=lambda_.Code.from_asset("../backend/lambda/get_categories"),
+            handler="handler.handler",
+            **common_lambda_props,
+        )
+        create_category_lambda = lambda_.Function(
+            self,
+            "CreateCategoryLambda",
+            code=lambda_.Code.from_asset("../backend/lambda/create_category"),
+            handler="handler.handler",
+            **common_lambda_props,
+        )
+        update_category_lambda = lambda_.Function(
+            self,
+            "UpdateCategoryLambda",
+            code=lambda_.Code.from_asset("../backend/lambda/update_category"),
+            handler="handler.handler",
+            **common_lambda_props,
+        )
 
-        books_table.grant_read_data(get_books_lambda)
-        books_table.grant_read_data(get_book_lambda)
-        books_table.grant_read_write_data(create_book_lambda)
-        books_table.grant_read_write_data(delete_book_lambda)
-        books_table.grant_read_write_data(update_book_status_lambda)
+        for fn in [
+            get_books_lambda,
+            get_book_lambda,
+            create_book_lambda,
+            delete_book_lambda,
+            update_book_status_lambda,
+        ]:
+            books_table.grant_read_write_data(fn)
+
+        for fn in [
+            get_books_lambda,
+            get_book_lambda,
+            create_book_lambda,
+            get_categories_lambda,
+            create_category_lambda,
+            update_category_lambda,
+            update_book_status_lambda,
+        ]:
+            categories_table.grant_read_write_data(fn)
 
         http_api = apigatewayv2.HttpApi(
             self,
@@ -251,6 +300,30 @@ class IsbnLibraryStack(Stack):
             ),
             authorizer=jwt_authorizer,
         )
+        http_api.add_routes(
+            path="/categories",
+            methods=[apigatewayv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "GetCategoriesIntegration", get_categories_lambda
+            ),
+            authorizer=jwt_authorizer,
+        )
+        http_api.add_routes(
+            path="/categories",
+            methods=[apigatewayv2.HttpMethod.POST],
+            integration=integrations.HttpLambdaIntegration(
+                "CreateCategoryIntegration", create_category_lambda
+            ),
+            authorizer=jwt_authorizer,
+        )
+        http_api.add_routes(
+            path="/categories/{categoryId}",
+            methods=[apigatewayv2.HttpMethod.PATCH],
+            integration=integrations.HttpLambdaIntegration(
+                "UpdateCategoryIntegration", update_category_lambda
+            ),
+            authorizer=jwt_authorizer,
+        )
 
         CfnOutput(self, "UserPoolId", value=user_pool.user_pool_id)
         CfnOutput(self, "UserPoolClientId", value=user_pool_client.user_pool_client_id)
@@ -258,3 +331,4 @@ class IsbnLibraryStack(Stack):
         CfnOutput(self, "ApiUrl", value=http_api.url or "")
         CfnOutput(self, "JwtIssuer", value=jwt_issuer)
         CfnOutput(self, "BooksTableName", value=books_table.table_name)
+        CfnOutput(self, "CategoriesTableName", value=categories_table.table_name)

@@ -21,15 +21,20 @@ def test_update_book_status_success(lambda_event: dict[str, object]) -> None:
         "Attributes": {
             "userId": "user-123",
             "isbn": "9784860648114",
+            "categoryId": "technology",
             "readingStatus": VALID_READING_STATUS,
         }
     }
 
-    with patch.object(update_book_status_handler, "get_books_table", return_value=table):
+    with (
+        patch.object(update_book_status_handler, "get_books_table", return_value=table),
+        patch.object(update_book_status_handler, "get_category", return_value={"name": "技術書"}),
+    ):
         status_code, body = parse_response(update_book_status_handler.handler(lambda_event, None))
 
     assert status_code == 200
     assert body["readingStatus"] == VALID_READING_STATUS
+    assert body["categoryName"] == "技術書"
 
 
 def test_update_book_status_returns_404_when_missing(lambda_event: dict[str, object]) -> None:

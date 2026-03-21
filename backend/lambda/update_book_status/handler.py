@@ -4,6 +4,8 @@ from typing import Any
 from botocore.exceptions import ClientError
 
 from shared.auth import get_user_id
+from shared.books import to_book_response
+from shared.categories import get_category
 from shared.dynamo import get_books_table
 from shared.isbn import normalize_isbn
 from shared.responses import json_response
@@ -32,7 +34,12 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             ConditionExpression="attribute_exists(userId) AND attribute_exists(isbn)",
             ReturnValues="ALL_NEW",
         )
-        return json_response(200, result.get("Attributes", {}))
+        item = result.get("Attributes", {})
+        category = get_category(user_id, item.get("categoryId", ""))
+        return json_response(
+            200,
+            to_book_response(item, category_name=category["name"] if category else None),
+        )
     except ClientError as error:
         if error.response["Error"]["Code"] == "ConditionalCheckFailedException":
             return json_response(404, {"message": "Book not found"})

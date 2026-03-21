@@ -19,7 +19,7 @@ test.describe("frontend dashboard visuals", () => {
     await expect(page.getByRole("heading", { name: "蔵書一覧" })).toBeVisible();
     await expect(page.getByText("本棚を眺めるように管理する")).toBeVisible();
     await expect(page.getByText("Books")).toBeVisible();
-    await expect(page.getByRole("button", { name: "絞り込む" })).toBeVisible();
+    await expect(page.locator(".library-toolbar").getByRole("link", { name: "カテゴリ管理" })).toBeVisible();
 
     await expect(page.locator(".coverflow-book.is-active").first()).toBeVisible();
     await expect(page.locator(".coverflow-selection")).toBeVisible();
@@ -38,6 +38,18 @@ test.describe("frontend dashboard visuals", () => {
 
     await page.screenshot({
       path: testInfo.outputPath("book-detail-desktop.png"),
+      fullPage: true,
+    });
+  });
+
+  test("categories page captures management layout", async ({ page }, testInfo) => {
+    await page.goto("/categories");
+    await expect(page.getByRole("heading", { name: "カテゴリ管理" })).toBeVisible();
+    await expect(page.getByPlaceholder("新しいカテゴリ名")).toBeVisible();
+    await expect(page.locator(".category-card").first()).toBeVisible();
+
+    await page.screenshot({
+      path: testInfo.outputPath("categories-view.png"),
       fullPage: true,
     });
   });

@@ -247,7 +247,7 @@ export function CoverFlowShelf({
             </div>
             <div className="chip-row">
               <span className="tag-chip">{selectedBook.readingStatus}</span>
-              <span className="tag-chip is-outline">{selectedBook.category}</span>
+              <span className="tag-chip is-outline">{selectedBook.categoryName}</span>
               <span className="tag-chip is-outline">{selectedBook.bookFormat}</span>
             </div>
           </div>

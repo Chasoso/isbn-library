@@ -1,4 +1,12 @@
-import type { Book, BookLookupResult, CreateBookPayload } from "../types";
+import { defaultCategoryId } from "../catalog";
+import type {
+  Book,
+  BookLookupResult,
+  CategoryDefinition,
+  CreateBookPayload,
+  CreateCategoryPayload,
+  UpdateCategoryPayload,
+} from "../types";
 
 const createMockCover = (title: string, accent: string, subtitle: string): string => {
   const svg = `
@@ -23,6 +31,36 @@ const createMockCover = (title: string, accent: string, subtitle: string): strin
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
+const demoCategories: CategoryDefinition[] = [
+  {
+    categoryId: "technology",
+    name: "技術書",
+    sortOrder: 10,
+    color: "#4C8BF5",
+    createdAt: "2026-03-20T10:00:00Z",
+    updatedAt: "2026-03-20T10:00:00Z",
+  },
+  {
+    categoryId: "business",
+    name: "ビジネス",
+    sortOrder: 20,
+    color: "#35A271",
+    createdAt: "2026-03-20T10:00:00Z",
+    updatedAt: "2026-03-20T10:00:00Z",
+  },
+  {
+    categoryId: defaultCategoryId,
+    name: "その他",
+    sortOrder: 90,
+    color: "#8FA2B6",
+    createdAt: "2026-03-20T10:00:00Z",
+    updatedAt: "2026-03-20T10:00:00Z",
+  },
+];
+
+const categoryName = (categoryId: string): string =>
+  memoryCategories.find((item) => item.categoryId === categoryId)?.name ?? "その他";
+
 const demoBooks: Book[] = [
   {
     userId: "demo-user",
@@ -33,7 +71,8 @@ const demoBooks: Book[] = [
     publishedDate: "2024-03-12",
     coverImageUrl: createMockCover("英語フレーズ大全", "#35b6b0", "ビジネス"),
     bookFormat: "単行本",
-    category: "ビジネス",
+    categoryId: "business",
+    categoryName: "ビジネス",
     readingStatus: "読書中",
     createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
   },
@@ -46,7 +85,8 @@ const demoBooks: Book[] = [
     publishedDate: "2025-01-20",
     coverImageUrl: createMockCover("コミュニティの中でしていること", "#f0b24f", "技術書"),
     bookFormat: "単行本",
-    category: "技術書",
+    categoryId: "technology",
+    categoryName: "技術書",
     readingStatus: "未読",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
   },
@@ -57,65 +97,22 @@ const demoBooks: Book[] = [
     author: "James Clear",
     publisher: "パンローリング",
     publishedDate: "2022-11-02",
-    coverImageUrl: createMockCover("Atomic Habits", "#7ab7cf", "統計"),
+    coverImageUrl: createMockCover("Atomic Habits", "#7ab7cf", "その他"),
     bookFormat: "ハードカバー",
-    category: "統計",
+    categoryId: defaultCategoryId,
+    categoryName: "その他",
     readingStatus: "完了",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-  },
-  {
-    userId: "demo-user",
-    isbn: "9784296116904",
-    title: "10年後、君に仕事はあるのか?",
-    author: "藤原 和博",
-    publisher: "日経BP",
-    publishedDate: "2023-07-01",
-    coverImageUrl: createMockCover("10年後、君に仕事はあるのか?", "#90c98c", "ビジネス"),
-    bookFormat: "新書",
-    category: "ビジネス",
-    readingStatus: "未読",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-  },
-  {
-    userId: "demo-user",
-    isbn: "9784815615758",
-    title: "統計学が最強の学問である",
-    author: "西内 啓",
-    publisher: "ダイヤモンド社",
-    publishedDate: "2024-10-10",
-    coverImageUrl: createMockCover("統計学が最強の学問である", "#708ed6", "統計"),
-    bookFormat: "新書",
-    category: "統計",
-    readingStatus: "完了",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-  },
-  {
-    userId: "demo-user",
-    isbn: "9784478116692",
-    title: "趣味する統計",
-    author: "東堂 葵",
-    publisher: "ダイヤモンド社",
-    publishedDate: "2023-12-01",
-    coverImageUrl: createMockCover("趣味する統計", "#3a8db0", "趣味"),
-    bookFormat: "新書",
-    category: "趣味",
-    readingStatus: "読書中",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
   },
 ];
 
 let memoryBooks = [...demoBooks];
+let memoryCategories = [...demoCategories];
 
 const matchesQuery = (book: Book, query?: string): boolean => {
-  if (!query) {
-    return true;
-  }
-
+  if (!query) return true;
   const normalized = query.trim().toLowerCase();
-  if (!normalized) {
-    return true;
-  }
-
+  if (!normalized) return true;
   return (
     book.title.toLowerCase().includes(normalized) ||
     book.author.toLowerCase().includes(normalized)
@@ -123,13 +120,18 @@ const matchesQuery = (book: Book, query?: string): boolean => {
 };
 
 export const mockSession = {
-  getBooks(filters?: { query?: string; bookFormat?: string; category?: string; readingStatus?: string }): { items: Book[] } {
+  getBooks(filters?: {
+    query?: string;
+    bookFormat?: string;
+    categoryId?: string;
+    readingStatus?: string;
+  }): { items: Book[] } {
     return {
       items: memoryBooks.filter(
         (book) =>
           matchesQuery(book, filters?.query) &&
           (!filters?.bookFormat || book.bookFormat === filters.bookFormat) &&
-          (!filters?.category || book.category === filters.category) &&
+          (!filters?.categoryId || book.categoryId === filters.categoryId) &&
           (!filters?.readingStatus || book.readingStatus === filters.readingStatus),
       ),
     };
@@ -140,6 +142,9 @@ export const mockSession = {
       throw new Error("Book not found");
     }
     return book;
+  },
+  getCategories(): { items: CategoryDefinition[] } {
+    return { items: [...memoryCategories].sort((left, right) => left.sortOrder - right.sortOrder) };
   },
   lookupBook(isbn: string): BookLookupResult {
     const existing = memoryBooks.find((item) => item.isbn === isbn);
@@ -172,11 +177,49 @@ export const mockSession = {
     const created: Book = {
       userId: "demo-user",
       createdAt: new Date().toISOString(),
+      categoryName: categoryName(payload.categoryId),
       ...payload,
     };
 
     memoryBooks = [created, ...memoryBooks];
     return created;
+  },
+  createCategory(payload: CreateCategoryPayload): CategoryDefinition {
+    const name = payload.name.trim();
+    if (!name) {
+      throw new Error("Category name is required");
+    }
+    const created: CategoryDefinition = {
+      categoryId: `cat_${memoryCategories.length + 1}`,
+      name,
+      color: payload.color ?? "",
+      sortOrder:
+        Math.max(...memoryCategories.map((item) => item.sortOrder), 0) + 10,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    memoryCategories = [...memoryCategories, created];
+    return created;
+  },
+  updateCategory(categoryId: string, payload: UpdateCategoryPayload): CategoryDefinition {
+    const category = memoryCategories.find((item) => item.categoryId === categoryId);
+    if (!category) {
+      throw new Error("Category not found");
+    }
+    if (payload.name !== undefined) {
+      category.name = payload.name.trim() || category.name;
+      memoryBooks = memoryBooks.map((book) =>
+        book.categoryId === categoryId ? { ...book, categoryName: category.name } : book,
+      );
+    }
+    if (payload.color !== undefined) {
+      category.color = payload.color;
+    }
+    if (payload.sortOrder !== undefined) {
+      category.sortOrder = payload.sortOrder;
+    }
+    category.updatedAt = new Date().toISOString();
+    return category;
   },
   updateBookStatus(isbn: string, readingStatus: string): Book {
     const book = memoryBooks.find((item) => item.isbn === isbn);
@@ -191,5 +234,6 @@ export const mockSession = {
   },
   reset(): void {
     memoryBooks = [...demoBooks];
+    memoryCategories = [...demoCategories];
   },
 };

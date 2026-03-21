@@ -44,6 +44,8 @@ $env:COGNITO_DOMAIN_PREFIX = "isbn-library-yourname"
 $env:COGNITO_CALLBACK_URLS = "http://localhost:5173/auth/callback,https://main.xxxxxx.amplifyapp.com/auth/callback"
 $env:COGNITO_LOGOUT_URLS = "http://localhost:5173,https://main.xxxxxx.amplifyapp.com"
 $env:CORS_ALLOW_ORIGINS = "http://localhost:5173,https://main.xxxxxx.amplifyapp.com"
+$env:BOOKS_TABLE_NAME = "books"
+$env:CATEGORIES_TABLE_NAME = "book-category"
 $env:GOOGLE_BOOKS_API_KEY = "your-google-books-api-key"
 ```
 
@@ -68,6 +70,7 @@ CloudFormation Outputs から以下を控えます。
 - `ApiUrl`
 - `JwtIssuer`
 - `BooksTableName`
+- `CategoriesTableName`
 
 ## 5. Cognito 初期ユーザー作成
 
