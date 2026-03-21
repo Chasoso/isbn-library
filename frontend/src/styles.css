@@ -577,7 +577,7 @@ select {
   border: 1px solid rgba(167, 136, 97, 0.12);
   overflow: hidden;
   cursor: grab;
-  touch-action: pan-x;
+  touch-action: pan-y pinch-zoom;
 }
 
 .coverflow-stage-wrap.is-dragging {

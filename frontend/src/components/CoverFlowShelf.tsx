@@ -26,7 +26,14 @@ type CoverFlowPresentation = {
 };
 
 const RAIL_ITEM_WIDTH = 220;
+const MOBILE_RAIL_ITEM_WIDTH = 172;
 const MAX_VISIBLE_OFFSET = 5;
+const MOBILE_BREAKPOINT = 720;
+const POINTER_DRAG_THRESHOLD = 6;
+const TOUCH_DRAG_THRESHOLD = 14;
+const AXIS_LOCK_THRESHOLD = 10;
+const HORIZONTAL_LOCK_RATIO = 1.2;
+const TOUCH_DRAG_MULTIPLIER = 1.65;
 
 export function CoverFlowShelf({
   books,
@@ -38,15 +45,41 @@ export function CoverFlowShelf({
   const dragStateRef = useRef({
     pointerId: -1,
     startX: 0,
+    startY: 0,
     startScrollLeft: 0,
     startIndex: 0,
     suppressClick: false,
+    axisLock: null as "x" | "y" | null,
+    pointerType: "mouse",
+    dragMultiplier: 1,
+    hasPointerCapture: false,
   });
   const [isDragging, setIsDragging] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === "undefined" ? 1280 : window.innerWidth,
+  );
 
   useEffect(() => {
     railItemRefs.current = railItemRefs.current.slice(0, books.length);
   }, [books.length]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleResize = (): void => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  const isTouchViewport = viewportWidth < MOBILE_BREAKPOINT;
+  const railItemWidth = isTouchViewport ? MOBILE_RAIL_ITEM_WIDTH : RAIL_ITEM_WIDTH;
 
   const visibleBooks = useMemo(
     () =>
@@ -136,13 +169,19 @@ export function CoverFlowShelf({
       return;
     }
 
+    const isTouchInput = event.pointerType === "touch" || isTouchViewport;
+
     dragStateRef.current.pointerId = event.pointerId;
     dragStateRef.current.startX = event.clientX;
+    dragStateRef.current.startY = event.clientY;
     dragStateRef.current.startScrollLeft = rail.scrollLeft;
     dragStateRef.current.startIndex = activeIndex;
     dragStateRef.current.suppressClick = false;
+    dragStateRef.current.axisLock = null;
+    dragStateRef.current.pointerType = event.pointerType;
+    dragStateRef.current.dragMultiplier = isTouchInput ? TOUCH_DRAG_MULTIPLIER : 1;
+    dragStateRef.current.hasPointerCapture = false;
     setIsDragging(false);
-    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -152,12 +191,43 @@ export function CoverFlowShelf({
     }
 
     const deltaX = event.clientX - dragStateRef.current.startX;
-    if (Math.abs(deltaX) > 4) {
+    const deltaY = event.clientY - dragStateRef.current.startY;
+    const absoluteX = Math.abs(deltaX);
+    const absoluteY = Math.abs(deltaY);
+    const dragThreshold =
+      dragStateRef.current.pointerType === "touch" || isTouchViewport
+        ? TOUCH_DRAG_THRESHOLD
+        : POINTER_DRAG_THRESHOLD;
+
+    if (
+      dragStateRef.current.axisLock === null &&
+      (absoluteX > AXIS_LOCK_THRESHOLD || absoluteY > AXIS_LOCK_THRESHOLD)
+    ) {
+      dragStateRef.current.axisLock =
+        absoluteX > absoluteY * HORIZONTAL_LOCK_RATIO ? "x" : "y";
+    }
+
+    if (dragStateRef.current.axisLock === "y") {
+      return;
+    }
+
+    if (
+      dragStateRef.current.axisLock === "x" &&
+      !dragStateRef.current.hasPointerCapture
+    ) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      dragStateRef.current.hasPointerCapture = true;
+    }
+
+    if (absoluteX > dragThreshold) {
       setIsDragging(true);
       dragStateRef.current.suppressClick = true;
     }
 
-    rail.scrollLeft = dragStateRef.current.startScrollLeft - deltaX;
+    rail.scrollLeft =
+      dragStateRef.current.startScrollLeft -
+      deltaX * dragStateRef.current.dragMultiplier;
+    updateActiveFromScroll();
   };
 
   const finishDrag = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -170,7 +240,10 @@ export function CoverFlowShelf({
     scrollToIndex(nearestIndex);
 
     dragStateRef.current.pointerId = -1;
-    event.currentTarget.releasePointerCapture(event.pointerId);
+    if (dragStateRef.current.hasPointerCapture) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragStateRef.current.hasPointerCapture = false;
     window.setTimeout(() => {
       dragStateRef.current.suppressClick = false;
     }, 0);
@@ -253,7 +326,7 @@ export function CoverFlowShelf({
                 railItemRefs.current[index] = node;
               }}
               className="coverflow-rail-stop"
-              style={{ width: `${RAIL_ITEM_WIDTH}px` }}
+              style={{ width: `${railItemWidth}px` }}
             />
           ))}
         </div>
