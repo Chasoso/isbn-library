@@ -40,14 +40,14 @@ jobs:
         run: npm run test:e2e
 
       - name: Upload Playwright screenshots
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: frontend-playwright-screenshots
           path: frontend/test-results
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: frontend-playwright-report

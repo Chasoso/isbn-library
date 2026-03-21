@@ -67,14 +67,14 @@ jobs:
         run: npm run test:e2e
 
       - name: Upload Playwright screenshots
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: frontend-playwright-screenshots
           path: frontend/test-results
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: frontend-playwright-report
@@ -128,7 +128,7 @@ jobs:
           echo "::add-mask::arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/cdk-hnb659fds-file-publishing-role-${{ vars.AWS_ACCOUNT_ID }}-${{ vars.AWS_REGION }}"
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -180,7 +180,7 @@ jobs:
           echo "::add-mask::${{ vars.AWS_ACCOUNT_ID }}"
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
