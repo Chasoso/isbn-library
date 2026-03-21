@@ -121,6 +121,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Mask AWS account identifiers
+        run: |
+          echo "::add-mask::${{ vars.AWS_ACCOUNT_ID }}"
+          echo "::add-mask::arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/cdk-hnb659fds-deploy-role-${{ vars.AWS_ACCOUNT_ID }}-${{ vars.AWS_REGION }}"
+          echo "::add-mask::arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/cdk-hnb659fds-file-publishing-role-${{ vars.AWS_ACCOUNT_ID }}-${{ vars.AWS_REGION }}"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
@@ -169,6 +175,10 @@ jobs:
     needs: cdk-deploy
     if: ${{ vars.AMPLIFY_APP_ID != '' && vars.AMPLIFY_BRANCH_NAME != '' }}
     steps:
+      - name: Mask AWS account identifiers
+        run: |
+          echo "::add-mask::${{ vars.AWS_ACCOUNT_ID }}"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:

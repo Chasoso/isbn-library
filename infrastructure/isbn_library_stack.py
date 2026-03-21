@@ -18,10 +18,10 @@ from aws_cdk import (
     aws_apigatewayv2_integrations as integrations,
     aws_cognito as cognito,
     aws_dynamodb as dynamodb,
+    aws_iam as iam,
     aws_lambda as lambda_,
     aws_scheduler as scheduler,
     aws_scheduler_targets as scheduler_targets,
-    aws_ssm as ssm,
 )
 from constructs import Construct
 
@@ -318,12 +318,15 @@ class IsbnLibraryStack(Stack):
             categories_table.grant_read_write_data(fn)
 
         if google_wif_credential_config_parameter_name:
-            google_wif_credential_config_parameter = ssm.StringParameter.from_string_parameter_name(
-                self,
-                "GoogleWifCredentialConfigParameter",
-                google_wif_credential_config_parameter_name,
+            normalized_parameter_name = google_wif_credential_config_parameter_name.lstrip("/")
+            export_books_to_sheets_lambda.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=["ssm:GetParameter"],
+                    resources=[
+                        f"arn:aws:ssm:{Stack.of(self).region}:{Stack.of(self).account}:parameter/{normalized_parameter_name}"
+                    ],
+                )
             )
-            google_wif_credential_config_parameter.grant_read(export_books_to_sheets_lambda)
 
         http_api = apigatewayv2.HttpApi(
             self,
