@@ -6,18 +6,18 @@ from typing import Any
 
 import boto3
 import requests
+from google.auth import load_credentials_from_dict
 from google.auth.transport.requests import Request
-from google.oauth2 import service_account
 
 from shared.books import to_book_response
 from shared.categories import category_response
 from shared.constants import (
-    GOOGLE_SERVICE_ACCOUNT_SECRET_NAME_ENV,
     GOOGLE_SHEETS_API_BASE_URL,
     GOOGLE_SHEETS_BOOKS_SHEET_NAME_ENV,
     GOOGLE_SHEETS_CATEGORIES_SHEET_NAME_ENV,
     GOOGLE_SHEETS_SCOPE,
     GOOGLE_SHEETS_SPREADSHEET_ID_ENV,
+    GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME_ENV,
 )
 from shared.dynamo import get_books_table, get_categories_table
 from shared.logging_utils import log_external_api, log_request, log_response
@@ -53,15 +53,15 @@ def get_env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
 
 
-def get_secret_payload(secret_name: str) -> dict[str, Any]:
-    client = boto3.client("secretsmanager")
-    response = client.get_secret_value(SecretId=secret_name)
-    return json.loads(response["SecretString"])
+def get_parameter_payload(parameter_name: str) -> dict[str, Any]:
+    client = boto3.client("ssm")
+    response = client.get_parameter(Name=parameter_name, WithDecryption=True)
+    return json.loads(response["Parameter"]["Value"])
 
 
-def build_access_token(service_account_info: dict[str, Any]) -> str:
-    credentials = service_account.Credentials.from_service_account_info(
-        service_account_info,
+def build_access_token(credential_config: dict[str, Any]) -> str:
+    credentials, _project_id = load_credentials_from_dict(
+        credential_config,
         scopes=[GOOGLE_SHEETS_SCOPE],
     )
     credentials.refresh(Request())
@@ -212,11 +212,11 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     try:
         log_request("export_books_to_sheets", event)
         spreadsheet_id = get_env(GOOGLE_SHEETS_SPREADSHEET_ID_ENV)
-        secret_name = get_env(GOOGLE_SERVICE_ACCOUNT_SECRET_NAME_ENV)
+        parameter_name = get_env(GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME_ENV)
         books_sheet_name = get_env(GOOGLE_SHEETS_BOOKS_SHEET_NAME_ENV, "books")
         categories_sheet_name = get_env(GOOGLE_SHEETS_CATEGORIES_SHEET_NAME_ENV, "categories")
 
-        if not spreadsheet_id or not secret_name:
+        if not spreadsheet_id or not parameter_name:
             return log_response(
                 "export_books_to_sheets",
                 json_response(
@@ -224,14 +224,15 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
                     {
                         "message": (
                             "Missing Google Sheets export configuration. "
-                            "Set GOOGLE_SHEETS_SPREADSHEET_ID and GOOGLE_SERVICE_ACCOUNT_SECRET_NAME."
+                            "Set GOOGLE_SHEETS_SPREADSHEET_ID and "
+                            "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME."
                         )
                     },
                 ),
             )
 
-        service_account_info = get_secret_payload(secret_name)
-        access_token = build_access_token(service_account_info)
+        credential_config = get_parameter_payload(parameter_name)
+        access_token = build_access_token(credential_config)
 
         category_items = scan_all_items(get_categories_table())
         category_map = build_category_map(category_items)

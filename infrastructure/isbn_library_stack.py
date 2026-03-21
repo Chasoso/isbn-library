@@ -21,7 +21,7 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_scheduler as scheduler,
     aws_scheduler_targets as scheduler_targets,
-    aws_secretsmanager as secretsmanager,
+    aws_ssm as ssm,
 )
 from constructs import Construct
 
@@ -84,8 +84,8 @@ class IsbnLibraryStack(Stack):
         google_books_api_key = os.getenv("GOOGLE_BOOKS_API_KEY", "")
         books_table_name = os.getenv("BOOKS_TABLE_NAME", "books")
         categories_table_name = os.getenv("CATEGORIES_TABLE_NAME", "book-category")
-        google_service_account_secret_name = os.getenv(
-            "GOOGLE_SERVICE_ACCOUNT_SECRET_NAME",
+        google_wif_credential_config_parameter_name = os.getenv(
+            "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME",
             "",
         )
         google_sheets_spreadsheet_id = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID", "")
@@ -206,7 +206,7 @@ class IsbnLibraryStack(Stack):
             "BOOKS_TABLE_NAME": books_table.table_name,
             "CATEGORIES_TABLE_NAME": categories_table.table_name,
             "GOOGLE_BOOKS_API_KEY": google_books_api_key,
-            "GOOGLE_SERVICE_ACCOUNT_SECRET_NAME": google_service_account_secret_name,
+            "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME": google_wif_credential_config_parameter_name,
             "GOOGLE_SHEETS_SPREADSHEET_ID": google_sheets_spreadsheet_id,
             "GOOGLE_SHEETS_BOOKS_SHEET_NAME": google_sheets_books_sheet_name,
             "GOOGLE_SHEETS_CATEGORIES_SHEET_NAME": google_sheets_categories_sheet_name,
@@ -317,13 +317,13 @@ class IsbnLibraryStack(Stack):
         ]:
             categories_table.grant_read_write_data(fn)
 
-        if google_service_account_secret_name:
-            google_service_account_secret = secretsmanager.Secret.from_secret_name_v2(
+        if google_wif_credential_config_parameter_name:
+            google_wif_credential_config_parameter = ssm.StringParameter.from_string_parameter_name(
                 self,
-                "GoogleSheetsServiceAccountSecret",
-                google_service_account_secret_name,
+                "GoogleWifCredentialConfigParameter",
+                google_wif_credential_config_parameter_name,
             )
-            google_service_account_secret.grant_read(export_books_to_sheets_lambda)
+            google_wif_credential_config_parameter.grant_read(export_books_to_sheets_lambda)
 
         http_api = apigatewayv2.HttpApi(
             self,
@@ -420,7 +420,11 @@ class IsbnLibraryStack(Stack):
             authorizer=jwt_authorizer,
         )
 
-        if google_service_account_secret_name and google_sheets_spreadsheet_id and export_schedule_expression:
+        if (
+            google_wif_credential_config_parameter_name
+            and google_sheets_spreadsheet_id
+            and export_schedule_expression
+        ):
             scheduler.Schedule(
                 self,
                 "BooksExportSchedule",

@@ -135,19 +135,19 @@ npm run test:e2e
 The stack can export `books` and `categories` to Google Sheets once per day.
 
 - Lambda: `backend/lambda/export_books_to_sheets/`
-- Secret storage: AWS Secrets Manager
+- WIF config storage: AWS Systems Manager Parameter Store
 - Scheduler: EventBridge Scheduler
 
 Required deployment variables:
 
-- `GOOGLE_SERVICE_ACCOUNT_SECRET_NAME`
+- `GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME`
 - `GOOGLE_SHEETS_SPREADSHEET_ID`
 - `GOOGLE_SHEETS_BOOKS_SHEET_NAME` default: `books`
 - `GOOGLE_SHEETS_CATEGORIES_SHEET_NAME` default: `categories`
 - `BOOKS_EXPORT_SCHEDULE_EXPRESSION` default: `cron(0 3 * * ? *)`
 - `BOOKS_EXPORT_SCHEDULE_TIMEZONE` default: `Asia/Tokyo`
 
-The secret value must be the full Google service account JSON. The batch clears and rewrites the `books` and `categories` sheets on every run.
+The Parameter Store value must be the Google Workload Identity Federation credential configuration JSON. The batch clears and rewrites the `books` and `categories` sheets on every run.
 
 See also: [docs/google-sheets-export.md](/d:/Git/isbn-library/docs/google-sheets-export.md)
 

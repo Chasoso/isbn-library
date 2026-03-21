@@ -1,5 +1,18 @@
 # Setup Guide
 
+## Google Sheets Export (WIF)
+
+To enable the daily Google Sheets export with Workload Identity Federation, set these environment variables before `cdk deploy`:
+
+- `GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME`
+- `GOOGLE_SHEETS_SPREADSHEET_ID`
+- `GOOGLE_SHEETS_BOOKS_SHEET_NAME`
+- `GOOGLE_SHEETS_CATEGORIES_SHEET_NAME`
+- `BOOKS_EXPORT_SCHEDULE_EXPRESSION`
+- `BOOKS_EXPORT_SCHEDULE_TIMEZONE`
+
+The parameter named by `GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME` must exist in AWS Systems Manager Parameter Store and contain the Google external account credential configuration JSON.
+
 ## 1. 前提
 
 - Node.js 20 以上

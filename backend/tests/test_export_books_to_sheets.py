@@ -58,7 +58,7 @@ def test_export_books_to_sheets_writes_books_and_categories(
             "os.environ",
             {
                 "GOOGLE_SHEETS_SPREADSHEET_ID": "spreadsheet-123",
-                "GOOGLE_SERVICE_ACCOUNT_SECRET_NAME": "isbn-library/google-sheets",
+                "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME": "/isbn-library/google-wif-config",
                 "GOOGLE_SHEETS_BOOKS_SHEET_NAME": "books",
                 "GOOGLE_SHEETS_CATEGORIES_SHEET_NAME": "categories",
             },
@@ -68,13 +68,13 @@ def test_export_books_to_sheets_writes_books_and_categories(
         patch.object(export_handler, "get_categories_table", return_value=categories_table),
         patch.object(
             export_handler,
-            "get_secret_payload",
-            return_value={"client_email": "svc@example.com", "private_key": "private"},
+            "get_parameter_payload",
+            return_value={"type": "external_account", "audience": "//iam.googleapis.com/projects/1/locations/global/workloadIdentityPools/pool/providers/aws"},
         ),
         patch.object(
-            export_handler.service_account.Credentials,
-            "from_service_account_info",
-            return_value=fake_credentials,
+            export_handler,
+            "load_credentials_from_dict",
+            return_value=(fake_credentials, "project-id"),
         ) as credentials_factory,
         patch.object(export_handler.requests, "post", side_effect=fake_post) as post_mock,
     ):
@@ -124,17 +124,17 @@ def test_export_books_to_sheets_handles_paginated_scans(
             "os.environ",
             {
                 "GOOGLE_SHEETS_SPREADSHEET_ID": "spreadsheet-123",
-                "GOOGLE_SERVICE_ACCOUNT_SECRET_NAME": "isbn-library/google-sheets",
+                "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME": "/isbn-library/google-wif-config",
             },
             clear=False,
         ),
         patch.object(export_handler, "get_books_table", return_value=books_table),
         patch.object(export_handler, "get_categories_table", return_value=categories_table),
-        patch.object(export_handler, "get_secret_payload", return_value={}),
+        patch.object(export_handler, "get_parameter_payload", return_value={}),
         patch.object(
-            export_handler.service_account.Credentials,
-            "from_service_account_info",
-            return_value=fake_credentials,
+            export_handler,
+            "load_credentials_from_dict",
+            return_value=(fake_credentials, "project-id"),
         ),
         patch.object(export_handler.requests, "post") as post_mock,
     ):
@@ -158,7 +158,7 @@ def test_export_books_to_sheets_requires_configuration(
         "os.environ",
         {
             "GOOGLE_SHEETS_SPREADSHEET_ID": "",
-            "GOOGLE_SERVICE_ACCOUNT_SECRET_NAME": "",
+            "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME": "",
         },
         clear=False,
     ):
@@ -188,17 +188,17 @@ def test_export_books_to_sheets_returns_500_when_google_api_fails(
             "os.environ",
             {
                 "GOOGLE_SHEETS_SPREADSHEET_ID": "spreadsheet-123",
-                "GOOGLE_SERVICE_ACCOUNT_SECRET_NAME": "isbn-library/google-sheets",
+                "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME": "/isbn-library/google-wif-config",
             },
             clear=False,
         ),
         patch.object(export_handler, "get_books_table", return_value=books_table),
         patch.object(export_handler, "get_categories_table", return_value=categories_table),
-        patch.object(export_handler, "get_secret_payload", return_value={}),
+        patch.object(export_handler, "get_parameter_payload", return_value={}),
         patch.object(
-            export_handler.service_account.Credentials,
-            "from_service_account_info",
-            return_value=fake_credentials,
+            export_handler,
+            "load_credentials_from_dict",
+            return_value=(fake_credentials, "project-id"),
         ),
         patch.object(export_handler.requests, "post", return_value=response),
     ):
