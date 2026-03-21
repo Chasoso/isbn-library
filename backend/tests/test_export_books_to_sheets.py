@@ -1,0 +1,208 @@
+from __future__ import annotations
+
+from unittest.mock import Mock, patch
+
+from conftest import load_handler_module, parse_response
+
+
+export_handler = load_handler_module("export_books_to_sheets")
+
+
+def test_export_books_to_sheets_writes_books_and_categories(
+    lambda_event: dict[str, object],
+) -> None:
+    books_table = Mock()
+    books_table.scan.side_effect = [
+        {
+            "Items": [
+                {
+                    "userId": "user-123",
+                    "isbn": "9784860648114",
+                    "title": "Book",
+                    "author": "Author",
+                    "categoryId": "technology",
+                    "createdAt": "2026-03-21T00:00:00+00:00",
+                }
+            ]
+        }
+    ]
+    categories_table = Mock()
+    categories_table.scan.side_effect = [
+        {
+            "Items": [
+                {
+                    "userId": "user-123",
+                    "categoryId": "technology",
+                    "name": "Technology",
+                    "sortOrder": 10,
+                    "color": "#4C8BF5",
+                    "createdAt": "2026-03-20T00:00:00+00:00",
+                    "updatedAt": "2026-03-20T00:00:00+00:00",
+                }
+            ]
+        }
+    ]
+
+    fake_credentials = Mock()
+    fake_credentials.token = "token-123"
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        response = Mock()
+        response.status_code = 200
+        response.json.return_value = {"ok": True, "url": url, "payload": json}
+        response.raise_for_status.return_value = None
+        return response
+
+    with (
+        patch.dict(
+            "os.environ",
+            {
+                "GOOGLE_SHEETS_SPREADSHEET_ID": "spreadsheet-123",
+                "GOOGLE_SERVICE_ACCOUNT_SECRET_NAME": "isbn-library/google-sheets",
+                "GOOGLE_SHEETS_BOOKS_SHEET_NAME": "books",
+                "GOOGLE_SHEETS_CATEGORIES_SHEET_NAME": "categories",
+            },
+            clear=False,
+        ),
+        patch.object(export_handler, "get_books_table", return_value=books_table),
+        patch.object(export_handler, "get_categories_table", return_value=categories_table),
+        patch.object(
+            export_handler,
+            "get_secret_payload",
+            return_value={"client_email": "svc@example.com", "private_key": "private"},
+        ),
+        patch.object(
+            export_handler.service_account.Credentials,
+            "from_service_account_info",
+            return_value=fake_credentials,
+        ) as credentials_factory,
+        patch.object(export_handler.requests, "post", side_effect=fake_post) as post_mock,
+    ):
+        status_code, body = parse_response(export_handler.handler(lambda_event, None))
+
+    assert status_code == 200
+    assert body["booksCount"] == 1
+    assert body["categoriesCount"] == 1
+    credentials_factory.assert_called_once()
+    fake_credentials.refresh.assert_called_once()
+    assert post_mock.call_count == 2
+
+    clear_payload = post_mock.call_args_list[0].kwargs["json"]
+    update_payload = post_mock.call_args_list[1].kwargs["json"]
+    assert clear_payload == {"ranges": ["books!A:Z", "categories!A:Z"]}
+    assert update_payload["data"][0]["range"] == "books!A1"
+    assert update_payload["data"][1]["range"] == "categories!A1"
+    assert update_payload["data"][0]["values"][1][0] == "user-123"
+    assert update_payload["data"][0]["values"][1][9] == "Technology"
+
+
+def test_export_books_to_sheets_handles_paginated_scans(
+    lambda_event: dict[str, object],
+) -> None:
+    books_table = Mock()
+    books_table.scan.side_effect = [
+        {"Items": [{"userId": "user-123", "isbn": "1", "categoryId": "technology"}], "LastEvaluatedKey": {"isbn": "1"}},
+        {"Items": [{"userId": "user-123", "isbn": "2", "categoryId": "technology"}]},
+    ]
+    categories_table = Mock()
+    categories_table.scan.return_value = {
+        "Items": [
+            {
+                "userId": "user-123",
+                "categoryId": "technology",
+                "name": "Technology",
+                "sortOrder": 10,
+            }
+        ]
+    }
+
+    fake_credentials = Mock()
+    fake_credentials.token = "token-123"
+
+    with (
+        patch.dict(
+            "os.environ",
+            {
+                "GOOGLE_SHEETS_SPREADSHEET_ID": "spreadsheet-123",
+                "GOOGLE_SERVICE_ACCOUNT_SECRET_NAME": "isbn-library/google-sheets",
+            },
+            clear=False,
+        ),
+        patch.object(export_handler, "get_books_table", return_value=books_table),
+        patch.object(export_handler, "get_categories_table", return_value=categories_table),
+        patch.object(export_handler, "get_secret_payload", return_value={}),
+        patch.object(
+            export_handler.service_account.Credentials,
+            "from_service_account_info",
+            return_value=fake_credentials,
+        ),
+        patch.object(export_handler.requests, "post") as post_mock,
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.json.return_value = {"ok": True}
+        response.raise_for_status.return_value = None
+        post_mock.side_effect = [response, response]
+
+        status_code, body = parse_response(export_handler.handler(lambda_event, None))
+
+    assert status_code == 200
+    assert body["booksCount"] == 2
+    assert books_table.scan.call_count == 2
+
+
+def test_export_books_to_sheets_requires_configuration(
+    lambda_event: dict[str, object],
+) -> None:
+    with patch.dict(
+        "os.environ",
+        {
+            "GOOGLE_SHEETS_SPREADSHEET_ID": "",
+            "GOOGLE_SERVICE_ACCOUNT_SECRET_NAME": "",
+        },
+        clear=False,
+    ):
+        status_code, body = parse_response(export_handler.handler(lambda_event, None))
+
+    assert status_code == 500
+    assert "Missing Google Sheets export configuration" in body["message"]
+
+
+def test_export_books_to_sheets_returns_500_when_google_api_fails(
+    lambda_event: dict[str, object],
+) -> None:
+    books_table = Mock()
+    books_table.scan.return_value = {"Items": []}
+    categories_table = Mock()
+    categories_table.scan.return_value = {"Items": []}
+    fake_credentials = Mock()
+    fake_credentials.token = "token-123"
+
+    response = Mock()
+    response.status_code = 500
+    response.json.return_value = {"error": {"message": "boom"}}
+    response.raise_for_status.side_effect = RuntimeError("boom")
+
+    with (
+        patch.dict(
+            "os.environ",
+            {
+                "GOOGLE_SHEETS_SPREADSHEET_ID": "spreadsheet-123",
+                "GOOGLE_SERVICE_ACCOUNT_SECRET_NAME": "isbn-library/google-sheets",
+            },
+            clear=False,
+        ),
+        patch.object(export_handler, "get_books_table", return_value=books_table),
+        patch.object(export_handler, "get_categories_table", return_value=categories_table),
+        patch.object(export_handler, "get_secret_payload", return_value={}),
+        patch.object(
+            export_handler.service_account.Credentials,
+            "from_service_account_info",
+            return_value=fake_credentials,
+        ),
+        patch.object(export_handler.requests, "post", return_value=response),
+    ):
+        status_code, body = parse_response(export_handler.handler(lambda_event, None))
+
+    assert status_code == 500
+    assert "Failed to export books to Google Sheets" in body["message"]

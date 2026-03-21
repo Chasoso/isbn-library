@@ -3,9 +3,29 @@ from __future__ import annotations
 import json
 from typing import Any
 
+SENSITIVE_KEYS = {
+    "access_token",
+    "authorization",
+    "private_key",
+    "privatekey",
+    "client_secret",
+    "secret",
+}
+
+
+def _redact(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: ("***" if key.lower() in SENSITIVE_KEYS else _redact(nested))
+            for key, nested in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact(item) for item in value]
+    return value
+
 
 def _safe_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, default=str)
+    return json.dumps(_redact(value), ensure_ascii=False, default=str)
 
 
 def _parse_body(body: Any) -> Any:
