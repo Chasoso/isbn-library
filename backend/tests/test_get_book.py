@@ -29,8 +29,8 @@ def test_get_book_returns_book(lambda_event: dict[str, object]) -> None:
             "isbn": "9784860648114",
             "title": "Sample",
             "author": "Author",
-            "bookFormat": "新書",
-            "category": "技術書",
+            "bookFormat": "譁ｰ譖ｸ",
+            "category": "謚陦捺嶌",
         }
     }
 
@@ -39,5 +39,24 @@ def test_get_book_returns_book(lambda_event: dict[str, object]) -> None:
 
     assert status_code == 200
     assert body["isbn"] == "9784860648114"
-    assert body["bookFormat"] == "新書"
-    assert body["category"] == "技術書"
+    assert body["bookFormat"] == "譁ｰ譖ｸ"
+    assert body["category"] == "謚陦捺嶌"
+
+
+def test_get_book_rejects_invalid_isbn(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "invalid"}
+
+    status_code, body = parse_response(get_book_handler.handler(lambda_event, None))
+
+    assert status_code == 400
+    assert body["message"] == "Invalid ISBN"
+
+
+def test_get_book_returns_500_when_table_access_fails(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+
+    with patch.object(get_book_handler, "get_books_table", side_effect=RuntimeError("boom")):
+        status_code, body = parse_response(get_book_handler.handler(lambda_event, None))
+
+    assert status_code == 500
+    assert "Failed to get book" in body["message"]

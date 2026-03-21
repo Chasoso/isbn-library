@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from io import BytesIO
 from urllib.parse import parse_qs, urlparse
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from unittest.mock import patch
 
 from conftest import load_handler_module, parse_response
@@ -89,3 +89,41 @@ def test_lookup_book_returns_503_after_rate_limit(lambda_event: dict[str, object
 
     assert status_code == 503
     assert "rate limit" in body["message"].lower()
+
+
+def test_lookup_book_rejects_invalid_isbn(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "invalid"}
+
+    status_code, body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 400
+    assert body["message"] == "Invalid ISBN"
+
+
+def test_lookup_book_returns_502_for_non_rate_limited_http_error(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+    upstream_error = HTTPError(
+        url="https://example.com",
+        code=500,
+        msg="Internal Server Error",
+        hdrs=None,
+        fp=None,
+    )
+
+    with patch.object(lookup_book_handler, "urlopen", side_effect=upstream_error):
+        status_code, body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 502
+    assert "Failed to lookup book" in body["message"]
+
+
+def test_lookup_book_returns_502_for_url_error(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+
+    with patch.object(lookup_book_handler, "urlopen", side_effect=URLError("dns failure")), patch.object(
+        lookup_book_handler.time, "sleep", return_value=None
+    ):
+        status_code, body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 502
+    assert "Failed to lookup book" in body["message"]
