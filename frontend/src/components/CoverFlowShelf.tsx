@@ -39,6 +39,7 @@ export function CoverFlowShelf({
     pointerId: -1,
     startX: 0,
     startScrollLeft: 0,
+    startIndex: 0,
     suppressClick: false,
   });
   const [isDragging, setIsDragging] = useState(false);
@@ -65,10 +66,10 @@ export function CoverFlowShelf({
     [visibleBooks],
   );
 
-  const updateActiveFromScroll = (): void => {
+  const getClosestIndexFromRail = (): number => {
     const rail = railRef.current;
     if (!rail || books.length === 0) {
-      return;
+      return 0;
     }
 
     const viewportCenter = rail.scrollLeft + rail.clientWidth / 2;
@@ -89,9 +90,34 @@ export function CoverFlowShelf({
       }
     });
 
+    return closestIndex;
+  };
+
+  const updateActiveFromScroll = (): void => {
+    const closestIndex = getClosestIndexFromRail();
     if (closestIndex !== activeIndex) {
       onActiveIndexChange(closestIndex);
     }
+  };
+
+  const clampIndex = (index: number): number => {
+    if (books.length === 0) {
+      return 0;
+    }
+    return Math.max(0, Math.min(index, books.length - 1));
+  };
+
+  const scrollToIndex = (index: number, behavior: ScrollBehavior = "smooth"): void => {
+    const item = railItemRefs.current[clampIndex(index)];
+    if (!item) {
+      return;
+    }
+
+    item.scrollIntoView({
+      behavior,
+      inline: "center",
+      block: "nearest",
+    });
   };
 
   const focusIndex = (index: number): void => {
@@ -100,17 +126,8 @@ export function CoverFlowShelf({
       return;
     }
 
-    const item = railItemRefs.current[index];
-    if (!item) {
-      return;
-    }
-
     onActiveIndexChange(index);
-    item.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
+    scrollToIndex(index);
   };
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -122,6 +139,7 @@ export function CoverFlowShelf({
     dragStateRef.current.pointerId = event.pointerId;
     dragStateRef.current.startX = event.clientX;
     dragStateRef.current.startScrollLeft = rail.scrollLeft;
+    dragStateRef.current.startIndex = activeIndex;
     dragStateRef.current.suppressClick = false;
     setIsDragging(false);
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -146,6 +164,10 @@ export function CoverFlowShelf({
     if (dragStateRef.current.pointerId !== event.pointerId) {
       return;
     }
+
+    const nearestIndex = getClosestIndexFromRail();
+    onActiveIndexChange(nearestIndex);
+    scrollToIndex(nearestIndex);
 
     dragStateRef.current.pointerId = -1;
     event.currentTarget.releasePointerCapture(event.pointerId);
