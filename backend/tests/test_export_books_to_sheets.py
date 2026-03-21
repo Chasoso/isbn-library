@@ -92,8 +92,11 @@ def test_export_books_to_sheets_writes_books_and_categories(
     assert clear_payload == {"ranges": ["books!A:Z", "categories!A:Z"]}
     assert update_payload["data"][0]["range"] == "books!A1"
     assert update_payload["data"][1]["range"] == "categories!A1"
-    assert update_payload["data"][0]["values"][1][0] == "user-123"
-    assert update_payload["data"][0]["values"][1][9] == "Technology"
+    assert update_payload["data"][0]["values"][0][0] == "isbn"
+    assert "userId" not in update_payload["data"][0]["values"][0]
+    assert "userId" not in update_payload["data"][1]["values"][0]
+    assert update_payload["data"][0]["values"][1][0] == "9784860648114"
+    assert update_payload["data"][0]["values"][1][8] == "Technology"
 
 
 def test_export_books_to_sheets_handles_paginated_scans(

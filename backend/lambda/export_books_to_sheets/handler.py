@@ -24,7 +24,6 @@ from shared.logging_utils import log_external_api, log_request, log_response
 from shared.responses import json_response
 
 BOOK_HEADERS = [
-    "userId",
     "isbn",
     "title",
     "author",
@@ -39,7 +38,6 @@ BOOK_HEADERS = [
 ]
 
 CATEGORY_HEADERS = [
-    "userId",
     "categoryId",
     "name",
     "sortOrder",
@@ -110,7 +108,6 @@ def build_books_rows(
     sorted_items = sorted(
         items,
         key=lambda item: (
-            item.get("userId", ""),
             item.get("createdAt", ""),
             item.get("isbn", ""),
         ),
@@ -131,7 +128,6 @@ def build_categories_rows(items: list[dict[str, Any]]) -> list[list[str]]:
     sorted_items = sorted(
         items,
         key=lambda item: (
-            item.get("userId", ""),
             int(item.get("sortOrder", 9999)),
             item.get("categoryId", ""),
         ),
@@ -141,7 +137,6 @@ def build_categories_rows(items: list[dict[str, Any]]) -> list[list[str]]:
         category = category_response(item)
         rows.append(
             [
-                str(item.get("userId", "")),
                 str(category.get("categoryId", "")),
                 str(category.get("name", "")),
                 str(category.get("sortOrder", "")),
