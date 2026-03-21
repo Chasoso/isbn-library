@@ -32,5 +32,12 @@ export default defineConfig({
         viewport: { width: 1440, height: 1600 },
       },
     },
+    {
+      name: "iphone-se-chromium",
+      use: {
+        ...devices["iPhone SE"],
+        browserName: "chromium",
+      },
+    },
   ],
 });

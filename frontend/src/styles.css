@@ -1066,6 +1066,69 @@ select {
 }
 
 @media (max-width: 719px) {
+  .app-shell {
+    padding: 16px 10px 104px;
+  }
+
+  .panel,
+  .loading-panel,
+  .auth-card {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .app-header {
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .nav-tabs {
+    gap: 8px;
+  }
+
+  .nav-tabs a,
+  .ghost-link {
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 0.94rem;
+  }
+
+  .section-heading {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summary-card {
+    min-width: 0;
+  }
+
+  .search-bar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-height: 0;
+    padding: 12px 12px 12px 14px;
+    border-radius: 24px;
+  }
+
+  .search-bar input {
+    width: 100%;
+  }
+
+  .inline-search-action {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .recent-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .coverflow-stage-wrap {
     min-height: 336px;
   }
@@ -1118,6 +1181,28 @@ select {
   .bookshelf-book:hover .bookshelf-face,
   .bookshelf-book:focus-within .bookshelf-face {
     transform: translate(0, 0) scale(1);
+  }
+}
+
+@media (max-width: 380px) {
+  .app-shell {
+    padding-inline: 8px;
+  }
+
+  .panel,
+  .loading-panel,
+  .auth-card {
+    padding: 16px;
+  }
+
+  .brand-block h1 {
+    font-size: 2.1rem;
+  }
+
+  .nav-tabs a,
+  .ghost-link {
+    padding: 0 10px;
+    font-size: 0.88rem;
   }
 }
 
