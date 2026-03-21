@@ -10,3 +10,4 @@ backend/coverage.xml
 __pycache__/
 *.pyc
 .DS_Store
+.coverage

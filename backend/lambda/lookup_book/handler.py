@@ -11,6 +11,14 @@ from shared.isbn import normalize_isbn
 from shared.responses import json_response
 
 
+def select_cover_image_url(image_links: dict[str, Any]) -> str:
+    for key in ("extraLarge", "large", "medium", "small", "thumbnail"):
+        value = image_links.get(key)
+        if value:
+            return value
+    return ""
+
+
 def extract_book(isbn: str, payload: dict[str, Any]) -> dict[str, str] | None:
     items = payload.get("items") or []
 
@@ -27,7 +35,7 @@ def extract_book(isbn: str, payload: dict[str, Any]) -> dict[str, str] | None:
         "author": ", ".join(authors),
         "publisher": volume_info.get("publisher", ""),
         "publishedDate": volume_info.get("publishedDate", ""),
-        "coverImageUrl": image_links.get("thumbnail", ""),
+        "coverImageUrl": select_cover_image_url(image_links),
     }
 
 

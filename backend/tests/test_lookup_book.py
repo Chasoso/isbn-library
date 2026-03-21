@@ -35,6 +35,22 @@ def test_lookup_book_returns_metadata(lambda_event: dict[str, object]) -> None:
     assert body["title"] == "Book"
 
 
+def test_lookup_book_prefers_larger_cover_images(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+    payload = (
+        b'{"items":[{"volumeInfo":{"title":"Book","authors":["Author"],"publisher":"Pub",'
+        b'"publishedDate":"2024-01-01","imageLinks":{"thumbnail":"https://example.com/thumb",'
+        b'"small":"https://example.com/small","medium":"https://example.com/medium",'
+        b'"large":"https://example.com/large","extraLarge":"https://example.com/extra-large"}}}]}'
+    )
+
+    with patch.object(lookup_book_handler, "urlopen", return_value=FakeResponse(payload)):
+        status_code, body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 200
+    assert body["coverImageUrl"] == "https://example.com/extra-large"
+
+
 def test_lookup_book_includes_api_key_when_configured(lambda_event: dict[str, object]) -> None:
     lambda_event["pathParameters"] = {"isbn": "9784860648114"}
     payload = b'{"items":[]}'
