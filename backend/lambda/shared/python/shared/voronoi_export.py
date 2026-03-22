@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from statistics import mean
 from typing import Any
 
 Point = tuple[float, float]
@@ -13,9 +14,17 @@ EPSILON = 1e-9
 MAX_ITERATIONS = 96
 CONVERGENCE_THRESHOLD = 0.15
 WEIGHT_GAIN = 0.012
-CENTROID_STEP = 0.18
-RADIAL_GAIN = 0.09
-MAX_ACCEPTABLE_ERROR = 0.28
+CENTROID_STEP = 0.2
+RADIAL_GAIN = 0.075
+SEED_REPULSION_DISTANCE = 18.0
+SEED_REPULSION_STEP = 0.12
+MAX_CENTER_SHARED_POLYGONS = 1
+CENTER_SHARE_RADIUS = 6.0
+MIN_VERTEX_COUNT = 4
+MAX_ACCEPTABLE_ERROR = 0.32
+INITIALIZATION_VARIANTS = 6
+CORNER_ROUND_BASE_RADIUS = 2.5
+CORNER_ROUND_RATIO = 0.12
 
 VORONOI_HEADERS = [
     "polygonId",
@@ -87,6 +96,7 @@ def make_semicircle_polygon(
 
 def initialize_seed_points(
     categories: list[dict[str, Any]],
+    variant: int = 0,
     radius: float = SEMICIRCLE_RADIUS,
 ) -> list[Point]:
     count = len(categories)
@@ -95,19 +105,29 @@ def initialize_seed_points(
     if count == 1:
         return [(0.0, radius * 0.42)]
 
-    usable_radius = radius * 0.76
+    ring_patterns = [
+        [0.82, 0.58, 0.38],
+        [0.74, 0.5, 0.66],
+        [0.68, 0.84, 0.48],
+        [0.78, 0.62, 0.44],
+    ]
+    ring_pattern = ring_patterns[variant % len(ring_patterns)]
     max_weight = max(category["weight"] for category in categories) or 1.0
     seeds: list[Point] = []
 
     for index, category in enumerate(categories):
-        angle = math.pi - ((index + 1) * math.pi / (count + 1))
-        base_ratio = 0.64 - ((category["weight"] / max_weight) * 0.18)
-        stagger = 0.04 if index % 2 == 0 else -0.03
-        radial_ratio = min(max(base_ratio + stagger, 0.38), 0.78)
-        x = usable_radius * radial_ratio * math.cos(angle)
-        y = usable_radius * radial_ratio * math.sin(angle) + radius * 0.16
+        ring_index = (index + variant) % len(ring_pattern)
+        base_ratio = ring_pattern[ring_index]
+        weight_offset = (0.5 - (category["weight"] / max_weight)) * 0.08
+        ratio = min(max(base_ratio + weight_offset, 0.34), 0.86)
+        angle_step = math.pi / (count + 1)
+        angle_offset = ((variant % 3) - 1) * angle_step * 0.18
+        angle = math.pi - ((index + 1) * angle_step) + angle_offset
+        x = radius * ratio * math.cos(angle)
+        y = radius * ratio * math.sin(angle)
         seeds.append(project_point_to_semicircle((x, y), radius * 0.94))
 
+    spread_seeds(seeds)
     return seeds
 
 
@@ -135,19 +155,42 @@ def build_category_voronoi_rows(
     parent_polygon = make_semicircle_polygon()
     target_areas = build_target_areas(categories)
 
+    polygons: list[Polygon]
+    metrics: list[dict[str, float]]
+    iteration_count: int
+
+    candidates: list[tuple[list[Polygon], list[dict[str, float]], int]] = []
+
     try:
-        polygons, metrics, iteration_count = generate_weighted_semicircle_voronoi(
-            categories,
-            parent_polygon,
-            target_areas,
+        candidates.append(
+            generate_weighted_semicircle_voronoi(
+                categories,
+                parent_polygon,
+                target_areas,
+            )
         )
-        if max(metric["relativeError"] for metric in metrics) > MAX_ACCEPTABLE_ERROR:
-            raise ValueError("weighted_voronoi_not_close_enough")
     except Exception:
+        pass
+
+    try:
+        candidates.append(
+            build_irregular_voronoi_fallback(
+                categories,
+                parent_polygon,
+                target_areas,
+            )
+        )
+    except Exception:
+        pass
+
+    chosen_candidate = choose_best_voronoi_candidate(candidates)
+    if chosen_candidate is None:
         polygons, metrics, iteration_count = build_fallback_radial_area_rows(
             categories,
             target_areas,
         )
+    else:
+        polygons, metrics, iteration_count = chosen_candidate
 
     for category, polygon, metric in zip(categories, polygons, metrics, strict=False):
         rows.extend(
@@ -171,47 +214,100 @@ def generate_weighted_semicircle_voronoi(
     if len(categories) == 1:
         metrics = compute_cell_metrics(categories, [parent_polygon], target_areas)
         return [parent_polygon], metrics, 0
+    if len(categories) == 2:
+        return build_two_category_weighted_split(categories, parent_polygon, target_areas)
 
-    seeds = initialize_seed_points(categories)
-    power_weights = [
-        target_area / (math.pi * SEMICIRCLE_RADIUS)
-        for target_area in target_areas
-    ]
-    best_polygons: list[Polygon] = []
-    best_metrics: list[dict[str, float]] = []
+    best_candidate: tuple[list[Polygon], list[dict[str, float]], int] | None = None
+    best_score = float("inf")
+
+    for variant in range(INITIALIZATION_VARIANTS):
+        candidate = relax_cells_to_target_areas(
+            categories,
+            parent_polygon,
+            target_areas,
+            initialize_seed_points(categories, variant=variant),
+        )
+        score = candidate_score(*candidate[:2])
+        if score < best_score:
+            best_candidate = candidate
+            best_score = score
+        if is_quality_acceptable(candidate[0], candidate[1]):
+            return candidate
+
+    if best_candidate is None:
+        raise ValueError("no_weighted_candidate")
+
+    return best_candidate
+
+
+def build_two_category_weighted_split(
+    categories: list[dict[str, Any]],
+    parent_polygon: Polygon,
+    target_areas: list[float],
+) -> tuple[list[Polygon], list[dict[str, float]], int]:
+    seed_left, seed_right = initialize_seed_points(categories, variant=2)
+    ax = seed_right[0] - seed_left[0]
+    ay = seed_right[1] - seed_left[1]
+    target_area = target_areas[0]
+    best_candidate: tuple[list[Polygon], list[dict[str, float]], int] | None = None
     best_error = float("inf")
 
-    for iteration in range(1, MAX_ITERATIONS + 1):
-        polygons = build_power_cells(seeds, power_weights, parent_polygon)
-        if any(len(polygon) < 3 for polygon in polygons):
-            raise ValueError("invalid_power_cells")
+    projection_values = [(ax * point[0]) + (ay * point[1]) for point in parent_polygon]
+    low = min(projection_values) - 20.0
+    high = max(projection_values) + 20.0
 
-        metrics = compute_cell_metrics(categories, polygons, target_areas)
-        max_relative_error = max(metric["relativeError"] for metric in metrics)
-        mean_relative_error = sum(metric["relativeError"] for metric in metrics) / len(metrics)
-
-        if max_relative_error < best_error:
-            best_error = max_relative_error
-            best_polygons = [polygon[:] for polygon in polygons]
-            best_metrics = [metric.copy() for metric in metrics]
-
-        if max_relative_error < CONVERGENCE_THRESHOLD:
-            return polygons, metrics, iteration
-
-        if iteration > 12 and abs(best_error - mean_relative_error) < 0.0005:
+    for iteration in range(1, 65):
+        limit = (low + high) / 2
+        left_polygon = clip_polygon(parent_polygon, ax, ay, limit)
+        right_polygon = clip_polygon(parent_polygon, -ax, -ay, -limit)
+        if len(left_polygon) < 3 or len(right_polygon) < 3:
             break
 
-        relax_cells_to_target_areas(
-            seeds,
-            power_weights,
-            polygons,
-            metrics,
-        )
+        polygons = [left_polygon, right_polygon]
+        metrics = compute_cell_metrics(categories, polygons, target_areas)
+        area_error = abs(metrics[0]["actualArea"] - target_area)
+        if area_error < best_error:
+            best_candidate = ([polygon[:] for polygon in polygons], [metric.copy() for metric in metrics], iteration)
+            best_error = area_error
 
-    if not best_polygons:
-        raise ValueError("weighted_voronoi_failed")
+        if metrics[0]["actualArea"] < target_area:
+            low = limit
+        else:
+            high = limit
 
-    return best_polygons, best_metrics, MAX_ITERATIONS
+    if best_candidate is None:
+        raise ValueError("two_category_split_failed")
+
+    return best_candidate
+
+
+def build_irregular_voronoi_fallback(
+    categories: list[dict[str, Any]],
+    parent_polygon: Polygon,
+    target_areas: list[float],
+) -> tuple[list[Polygon], list[dict[str, float]], int]:
+    best_candidate: tuple[list[Polygon], list[dict[str, float]], int] | None = None
+    best_score = float("inf")
+
+    for variant in range(INITIALIZATION_VARIANTS, INITIALIZATION_VARIANTS + 5):
+        seeds = initialize_seed_points(categories, variant=variant)
+        power_weights = [target_area / (math.pi * SEMICIRCLE_RADIUS) for target_area in target_areas]
+        polygons = build_power_cells(seeds, power_weights, parent_polygon)
+        if any(len(polygon) < 3 for polygon in polygons):
+            continue
+        metrics = compute_cell_metrics(categories, polygons, target_areas)
+        candidate = (polygons, metrics, 0)
+        score = candidate_score(polygons, metrics)
+        if score < best_score:
+            best_candidate = candidate
+            best_score = score
+        if is_quality_acceptable(polygons, metrics, relaxed=True):
+            return candidate
+
+    if best_candidate is not None:
+        return best_candidate
+
+    raise ValueError("no_irregular_candidate")
 
 
 def compute_cell_metrics(
@@ -240,6 +336,41 @@ def compute_cell_metrics(
 
 
 def relax_cells_to_target_areas(
+    categories: list[dict[str, Any]],
+    parent_polygon: Polygon,
+    target_areas: list[float],
+    seeds: list[Point],
+) -> tuple[list[Polygon], list[dict[str, float]], int]:
+    power_weights = [
+        target_area / (math.pi * SEMICIRCLE_RADIUS)
+        for target_area in target_areas
+    ]
+    best_candidate: tuple[list[Polygon], list[dict[str, float]], int] | None = None
+    best_score = float("inf")
+
+    for iteration in range(1, MAX_ITERATIONS + 1):
+        polygons = build_power_cells(seeds, power_weights, parent_polygon)
+        if any(len(polygon) < 3 for polygon in polygons):
+            break
+
+        metrics = compute_cell_metrics(categories, polygons, target_areas)
+        score = candidate_score(polygons, metrics)
+        if score < best_score:
+            best_candidate = ([polygon[:] for polygon in polygons], [metric.copy() for metric in metrics], iteration)
+            best_score = score
+
+        if max(metric["relativeError"] for metric in metrics) < CONVERGENCE_THRESHOLD:
+            return polygons, metrics, iteration
+
+        update_seed_and_weight_parameters(seeds, power_weights, polygons, metrics)
+
+    if best_candidate is None:
+        raise ValueError("relaxation_failed")
+
+    return best_candidate
+
+
+def update_seed_and_weight_parameters(
     seeds: list[Point],
     power_weights: list[float],
     polygons: list[Polygon],
@@ -251,10 +382,7 @@ def relax_cells_to_target_areas(
         error_delta = target_area - actual_area
         relative_delta = error_delta / max(target_area, EPSILON)
 
-        power_weights[index] = max(
-            0.0,
-            power_weights[index] + (error_delta * WEIGHT_GAIN),
-        )
+        power_weights[index] = max(0.0, power_weights[index] + (error_delta * WEIGHT_GAIN))
 
         centroid = polygon_centroid(polygon)
         moved = (
@@ -262,17 +390,19 @@ def relax_cells_to_target_areas(
             seed[1] * (1 - CENTROID_STEP) + centroid[1] * CENTROID_STEP,
         )
 
-        distance = math.hypot(moved[0], moved[1]) or 1.0
-        radial_factor = 1 - (relative_delta * RADIAL_GAIN)
+        radial_distance = math.hypot(moved[0], moved[1]) or 1.0
+        outward_scale = 1 - (relative_delta * RADIAL_GAIN)
         adjusted = (
-            moved[0] * radial_factor,
-            moved[1] * radial_factor,
+            moved[0] * outward_scale,
+            moved[1] * outward_scale,
         )
 
-        if distance <= EPSILON:
+        if radial_distance <= EPSILON:
             adjusted = centroid
 
         seeds[index] = project_point_to_semicircle(adjusted, SEMICIRCLE_RADIUS * 0.95)
+
+    spread_seeds(seeds)
 
 
 def polygon_to_rows(
@@ -286,7 +416,8 @@ def polygon_to_rows(
     if len(polygon) < 3:
         return []
 
-    closed_polygon = close_polygon(polygon)
+    rounded_polygon = round_polygon_corners(polygon)
+    closed_polygon = close_polygon(rounded_polygon)
     rows: list[list[Any]] = []
 
     for path, (x, y) in enumerate(closed_polygon):
@@ -314,6 +445,62 @@ def polygon_to_rows(
         )
 
     return rows
+
+
+def round_polygon_corners(polygon: Polygon) -> Polygon:
+    deduped = dedupe_polygon(polygon)
+    if len(deduped) < 3:
+        return deduped
+
+    rounded: Polygon = []
+    point_count = len(deduped)
+
+    for index, current in enumerate(deduped):
+        previous = deduped[index - 1]
+        following = deduped[(index + 1) % point_count]
+
+        previous_length = math.hypot(current[0] - previous[0], current[1] - previous[1])
+        next_length = math.hypot(following[0] - current[0], following[1] - current[1])
+        corner_radius = min(
+            CORNER_ROUND_BASE_RADIUS,
+            previous_length * CORNER_ROUND_RATIO,
+            next_length * CORNER_ROUND_RATIO,
+        )
+
+        if corner_radius <= EPSILON:
+            rounded.append(current)
+            continue
+
+        start = move_towards(current, previous, corner_radius)
+        end = move_towards(current, following, corner_radius)
+
+        if min(
+            math.hypot(current[0], current[1]),
+            math.hypot(start[0], start[1]),
+            math.hypot(end[0], end[1]),
+        ) <= (CENTER_SHARE_RADIUS * 1.15):
+            rounded.append(current)
+            continue
+
+        if not rounded or not points_close(rounded[-1], start):
+            rounded.append(start)
+        if not points_close(start, end):
+            rounded.append(end)
+
+    return dedupe_polygon(rounded)
+
+
+def move_towards(origin: Point, target: Point, distance: float) -> Point:
+    dx = target[0] - origin[0]
+    dy = target[1] - origin[1]
+    length = math.hypot(dx, dy)
+    if length <= EPSILON:
+        return origin
+    scale = distance / length
+    return (
+        round(origin[0] + (dx * scale), 6),
+        round(origin[1] + (dy * scale), 6),
+    )
 
 
 def build_fallback_radial_area_rows(
@@ -370,6 +557,109 @@ def build_power_cells(
         cells.append(cell if len(cell) >= 3 else [])
 
     return cells
+
+
+def choose_best_voronoi_candidate(
+    candidates: list[tuple[list[Polygon], list[dict[str, float]], int]],
+) -> tuple[list[Polygon], list[dict[str, float]], int] | None:
+    if not candidates:
+        return None
+
+    acceptable = [
+        candidate
+        for candidate in candidates
+        if is_quality_acceptable(candidate[0], candidate[1])
+    ]
+    if acceptable:
+        return min(acceptable, key=lambda candidate: candidate_score(candidate[0], candidate[1]))
+
+    structurally_valid = [
+        candidate
+        for candidate in candidates
+        if is_structurally_voronoi_like(candidate[0])
+    ]
+    if structurally_valid:
+        return min(structurally_valid, key=lambda candidate: candidate_score(candidate[0], candidate[1]))
+
+    relaxed = [
+        candidate
+        for candidate in candidates
+        if is_quality_acceptable(candidate[0], candidate[1], relaxed=True)
+    ]
+    if relaxed:
+        return min(relaxed, key=lambda candidate: candidate_score(candidate[0], candidate[1]))
+
+    return min(candidates, key=lambda candidate: candidate_score(candidate[0], candidate[1]))
+
+
+def is_quality_acceptable(
+    polygons: list[Polygon],
+    metrics: list[dict[str, float]],
+    relaxed: bool = False,
+) -> bool:
+    if not polygons or any(len(polygon) < 3 for polygon in polygons):
+        return False
+
+    center_shared_count = count_center_shared_polygons(polygons)
+    low_vertex_count = sum(1 for polygon in polygons if unique_vertex_count(polygon) < MIN_VERTEX_COUNT)
+    max_relative_error = max(metric["relativeError"] for metric in metrics)
+
+    if center_shared_count > (MAX_CENTER_SHARED_POLYGONS + (1 if relaxed else 0)):
+        return False
+    if low_vertex_count > (1 if relaxed else 0):
+        return False
+    if max_relative_error > (MAX_ACCEPTABLE_ERROR + (0.08 if relaxed else 0)):
+        return False
+
+    return True
+
+
+def is_structurally_voronoi_like(polygons: list[Polygon]) -> bool:
+    if not polygons or any(len(polygon) < 3 for polygon in polygons):
+        return False
+
+    if count_center_shared_polygons(polygons) > 0:
+        return False
+
+    polygons_with_many_vertices = sum(
+        1 for polygon in polygons if unique_vertex_count(polygon) >= MIN_VERTEX_COUNT
+    )
+    if polygons_with_many_vertices < max(1, len(polygons) - 1):
+        return False
+
+    return True
+
+
+def candidate_score(polygons: list[Polygon], metrics: list[dict[str, float]]) -> float:
+    max_relative_error = max(metric["relativeError"] for metric in metrics)
+    mean_relative_error = mean(metric["relativeError"] for metric in metrics)
+    center_penalty = count_center_shared_polygons(polygons) * 0.45
+    low_vertex_penalty = sum(
+        1 for polygon in polygons if unique_vertex_count(polygon) < MIN_VERTEX_COUNT
+    ) * 0.28
+    sliver_penalty = sum(1 for polygon in polygons if polygon_sliver_ratio(polygon) < 0.015) * 0.2
+    return max_relative_error + mean_relative_error + center_penalty + low_vertex_penalty + sliver_penalty
+
+
+def count_center_shared_polygons(polygons: list[Polygon]) -> int:
+    return sum(
+        1
+        for polygon in polygons
+        if any(math.hypot(point[0], point[1]) <= CENTER_SHARE_RADIUS for point in polygon)
+    )
+
+
+def unique_vertex_count(polygon: Polygon) -> int:
+    return len(dedupe_polygon(polygon))
+
+
+def polygon_sliver_ratio(polygon: Polygon) -> float:
+    xs = [point[0] for point in polygon]
+    ys = [point[1] for point in polygon]
+    width = max(xs) - min(xs) if xs else 0.0
+    height = max(ys) - min(ys) if ys else 0.0
+    box_area = max(width * height, EPSILON)
+    return polygon_area(polygon) / box_area
 
 
 def make_sector_polygon(
@@ -462,7 +752,38 @@ def project_point_to_semicircle(point: Point, max_radius: float) -> Point:
         scale = max_radius / distance
         x *= scale
         y *= scale
+    if math.hypot(x, y) < CENTER_SHARE_RADIUS * 2:
+        angle = math.atan2(max(y, EPSILON), x if abs(x) > EPSILON else EPSILON)
+        x = math.cos(angle) * CENTER_SHARE_RADIUS * 2.2
+        y = math.sin(angle) * CENTER_SHARE_RADIUS * 2.2
     return round(x, 6), round(y, 6)
+
+
+def spread_seeds(seeds: list[Point]) -> None:
+    for _ in range(3):
+        moved = False
+        for left_index in range(len(seeds)):
+            for right_index in range(left_index + 1, len(seeds)):
+                left = seeds[left_index]
+                right = seeds[right_index]
+                dx = right[0] - left[0]
+                dy = right[1] - left[1]
+                distance = math.hypot(dx, dy)
+                if distance < SEED_REPULSION_DISTANCE and distance > EPSILON:
+                    push = (SEED_REPULSION_DISTANCE - distance) * SEED_REPULSION_STEP
+                    ux = dx / distance
+                    uy = dy / distance
+                    seeds[left_index] = project_point_to_semicircle(
+                        (left[0] - ux * push, left[1] - uy * push),
+                        SEMICIRCLE_RADIUS * 0.95,
+                    )
+                    seeds[right_index] = project_point_to_semicircle(
+                        (right[0] + ux * push, right[1] + uy * push),
+                        SEMICIRCLE_RADIUS * 0.95,
+                    )
+                    moved = True
+        if not moved:
+            break
 
 
 def dedupe_polygon(polygon: Polygon) -> Polygon:
