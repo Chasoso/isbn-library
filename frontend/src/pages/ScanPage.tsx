@@ -42,13 +42,13 @@ export function ScanPage() {
 
       const isbn = normalizeIsbn(text);
       if (!isbn) {
-        setMessage("ISBN バーコードを判定できませんでした。少し角度を変えて再度お試しください。");
+        setMessage("ISBN バーコードとして認識できませんでした。少し角度を変えて再度お試しください。");
         return;
       }
 
       detected = true;
       controlsRef.current?.stop();
-      setMessage(`ISBN ${isbn} を読み取りました。判定画面へ移動します...`);
+      setMessage(`ISBN ${isbn} を読み取りました。判定画面へ移動しています...`);
       if (active) {
         navigate(`/result/${isbn}`);
       }
@@ -102,11 +102,15 @@ export function ScanPage() {
         );
 
         controlsRef.current = controls;
-        setMessage("バーコードを中央の枠に合わせてください。少し離して固定すると反応しやすくなります。");
+        setMessage(
+          "バーコードを中央の枠に合わせてください。少し離して固定すると反応しやすくなります。",
+        );
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
         if (/Permission|denied|NotAllowed/i.test(detail)) {
-          setMessage("カメラ権限が拒否されています。ブラウザ設定でカメラ利用を許可してください。");
+          setMessage(
+            "カメラ権限が拒否されています。ブラウザ設定でカメラ利用を許可してください。",
+          );
           return;
         }
         if (/secure|https|origin/i.test(detail)) {
@@ -127,12 +131,18 @@ export function ScanPage() {
   }, [navigate]);
 
   return (
-    <AppLayout title="スキャン" subtitle="いつでも登録できる常設アクション">
+    <AppLayout title="スキャン" subtitle="いつでも書籍を登録できる常設アクション">
       <section className="panel scan-panel">
         <div className="section-heading">
           <div>
             <p className="section-label">ISBN スキャン</p>
             <h3>カメラで ISBN を読み取る</h3>
+          </div>
+        </div>
+        <div className="scanner-shell">
+          <video ref={videoRef} className="scanner-video" muted playsInline autoPlay />
+          <div className="scanner-overlay" aria-hidden="true">
+            <div className="scanner-target" />
           </div>
         </div>
         <p className="subtle">{message}</p>
@@ -141,12 +151,6 @@ export function ScanPage() {
           <li>近づけすぎるとピントが合いにくいので、少し離した方が読みやすいです。</li>
           <li>影が入らない明るい場所で固定すると反応しやすくなります。</li>
         </ul>
-        <div className="scanner-shell">
-          <video ref={videoRef} className="scanner-video" muted playsInline autoPlay />
-          <div className="scanner-overlay" aria-hidden="true">
-            <div className="scanner-target" />
-          </div>
-        </div>
       </section>
     </AppLayout>
   );

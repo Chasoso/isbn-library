@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AppLayout } from "../app-shell";
 import { getBooks } from "../lib/api";
 import type { AuthState, Book } from "../types";
-import { RecentBookCard, SearchBar, SummaryCards, isInCurrentMonth, sortBooks } from "../view-helpers";
+import { RecentBookCard, SearchBar, SummaryCards, sortBooks } from "../view-helpers";
 
 export function HomePage({ authState }: { authState: AuthState }) {
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ export function HomePage({ authState }: { authState: AuthState }) {
   }, [authState.accessToken]);
 
   const recentBooks = books.slice(0, 6);
-  const monthlyCount = books.filter((book) => isInCurrentMonth(book.createdAt)).length;
+  const unreadCount = books.filter((book) => book.readingStatus === "未読").length;
 
   return (
     <AppLayout
@@ -50,10 +50,10 @@ export function HomePage({ authState }: { authState: AuthState }) {
               caption: books.length > 0 ? "蔵書を管理中" : "まずは1冊登録",
             },
             {
-              label: "今月の追加",
-              value: `+${monthlyCount}`,
+              label: "未読数",
+              value: `${unreadCount}`,
               tone: "sky",
-              caption: monthlyCount > 0 ? "今月の登録数" : "追加はまだありません",
+              caption: unreadCount > 0 ? "次に読みたい本" : "未読はありません",
             },
           ]}
         />
@@ -92,7 +92,9 @@ export function HomePage({ authState }: { authState: AuthState }) {
         {!loading && recentBooks.length === 0 ? (
           <div className="empty-state">
             <p>まだ本が登録されていません。</p>
-            <p className="subtle">右下の「スキャンする」から、最初の1冊を登録できます。</p>
+            <p className="subtle">
+              右下の「スキャンする」から、最初の1冊を登録できます。
+            </p>
           </div>
         ) : null}
         <div className="recent-grid">

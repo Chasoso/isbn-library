@@ -53,4 +53,17 @@ test.describe("frontend dashboard visuals", () => {
       fullPage: true,
     });
   });
+
+  test("scan page captures camera-first layout", async ({ page }, testInfo) => {
+    await page.goto("/scan");
+    await expect(page.locator(".scan-panel")).toBeVisible();
+    await expect(page.locator(".scanner-shell")).toBeVisible();
+    await expect(page.locator(".scanner-video")).toBeVisible();
+    await expect(page.locator(".scan-tips")).toBeVisible();
+
+    await page.screenshot({
+      path: testInfo.outputPath("scan-view.png"),
+      fullPage: true,
+    });
+  });
 });
