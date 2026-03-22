@@ -14,6 +14,7 @@ from shared.categories import category_response
 from shared.constants import (
     GOOGLE_SHEETS_API_BASE_URL,
     GOOGLE_SHEETS_BOOKS_SHEET_NAME_ENV,
+    GOOGLE_SHEETS_CATEGORY_VORONOI_SHEET_NAME_ENV,
     GOOGLE_SHEETS_CATEGORIES_SHEET_NAME_ENV,
     GOOGLE_SHEETS_SCOPE,
     GOOGLE_SHEETS_SPREADSHEET_ID_ENV,
@@ -22,6 +23,7 @@ from shared.constants import (
 from shared.dynamo import get_books_table, get_categories_table
 from shared.logging_utils import log_external_api, log_request, log_response
 from shared.responses import json_response
+from shared.voronoi_export import build_category_voronoi_rows
 
 BOOK_HEADERS = [
     "isbn",
@@ -188,9 +190,11 @@ def update_sheets(
     access_token: str,
     spreadsheet_id: str,
     books_sheet_name: str,
-    books_rows: list[list[str]],
+    books_rows: list[list[Any]],
     categories_sheet_name: str,
-    categories_rows: list[list[str]],
+    categories_rows: list[list[Any]],
+    category_voronoi_sheet_name: str,
+    category_voronoi_rows: list[list[Any]],
 ) -> None:
     post_google_api(
         "google_sheets_batch_update",
@@ -209,6 +213,11 @@ def update_sheets(
                     "majorDimension": "ROWS",
                     "values": categories_rows,
                 },
+                {
+                    "range": f"{category_voronoi_sheet_name}!A1",
+                    "majorDimension": "ROWS",
+                    "values": category_voronoi_rows,
+                },
             ],
         },
     )
@@ -222,6 +231,10 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         parameter_name = get_env(GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME_ENV)
         books_sheet_name = get_env(GOOGLE_SHEETS_BOOKS_SHEET_NAME_ENV, "books")
         categories_sheet_name = get_env(GOOGLE_SHEETS_CATEGORIES_SHEET_NAME_ENV, "categories")
+        category_voronoi_sheet_name = get_env(
+            GOOGLE_SHEETS_CATEGORY_VORONOI_SHEET_NAME_ENV,
+            "category_voronoi",
+        )
 
         if not spreadsheet_id or not parameter_name:
             return log_response(
@@ -248,11 +261,16 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
 
         books_rows = build_books_rows(book_items, category_map)
         categories_rows = build_categories_rows(category_items)
+        category_voronoi_rows = build_category_voronoi_rows(category_items, book_items)
 
         clear_sheets(
             access_token,
             spreadsheet_id,
-            [f"{books_sheet_name}!A:Z", f"{categories_sheet_name}!A:Z"],
+            [
+                f"{books_sheet_name}!A:Z",
+                f"{categories_sheet_name}!A:Z",
+                f"{category_voronoi_sheet_name}!A:M",
+            ],
         )
         update_sheets(
             access_token,
@@ -261,6 +279,8 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             books_rows,
             categories_sheet_name,
             categories_rows,
+            category_voronoi_sheet_name,
+            category_voronoi_rows,
         )
 
         return log_response(
@@ -271,8 +291,10 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
                     "message": "Books exported to Google Sheets",
                     "booksCount": max(len(books_rows) - 1, 0),
                     "categoriesCount": max(len(categories_rows) - 1, 0),
+                    "categoryVoronoiPointCount": max(len(category_voronoi_rows) - 1, 0),
                     "booksSheetName": books_sheet_name,
                     "categoriesSheetName": categories_sheet_name,
+                    "categoryVoronoiSheetName": category_voronoi_sheet_name,
                 },
             ),
         )

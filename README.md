@@ -144,10 +144,11 @@ Required deployment variables:
 - `GOOGLE_SHEETS_SPREADSHEET_ID`
 - `GOOGLE_SHEETS_BOOKS_SHEET_NAME` default: `books`
 - `GOOGLE_SHEETS_CATEGORIES_SHEET_NAME` default: `categories`
+- `GOOGLE_SHEETS_CATEGORY_VORONOI_SHEET_NAME` default: `category_voronoi`
 - `BOOKS_EXPORT_SCHEDULE_EXPRESSION` default: `cron(0 3 * * ? *)`
 - `BOOKS_EXPORT_SCHEDULE_TIMEZONE` default: `Asia/Tokyo`
 
-The Parameter Store value must be the Google Workload Identity Federation credential configuration JSON. The batch clears and rewrites the `books` and `categories` sheets on every run.
+The Parameter Store value must be the Google Workload Identity Federation credential configuration JSON. The batch clears and rewrites the `books`, `categories`, and `category_voronoi` sheets on every run.
 
 See also: [docs/google-sheets-export.md](/d:/Git/isbn-library/docs/google-sheets-export.md)
 

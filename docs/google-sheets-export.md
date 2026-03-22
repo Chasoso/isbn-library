@@ -1,15 +1,16 @@
 # Google Sheets Export
 
-This project can export `books` and `categories` to Google Sheets once per day.
+This project can export `books`, `categories`, and `category_voronoi` to Google Sheets once per day.
 
 ## Architecture
 
 - AWS Lambda reads `books` and `categories` from DynamoDB
 - The Lambda loads a Google Workload Identity Federation credential configuration JSON from AWS Systems Manager Parameter Store
 - The Lambda uses WIF to obtain a Google access token without a service account key
-- The Lambda clears and rewrites two sheets:
+- The Lambda clears and rewrites three sheets:
   - `books`
   - `categories`
+  - `category_voronoi`
 - EventBridge Scheduler triggers the export on a daily schedule
 
 ## Required AWS / CDK variables
@@ -18,6 +19,7 @@ This project can export `books` and `categories` to Google Sheets once per day.
 - `GOOGLE_SHEETS_SPREADSHEET_ID`
 - `GOOGLE_SHEETS_BOOKS_SHEET_NAME`
 - `GOOGLE_SHEETS_CATEGORIES_SHEET_NAME`
+- `GOOGLE_SHEETS_CATEGORY_VORONOI_SHEET_NAME`
 - `BOOKS_EXPORT_SCHEDULE_EXPRESSION`
 - `BOOKS_EXPORT_SCHEDULE_TIMEZONE`
 
@@ -26,6 +28,7 @@ Recommended values:
 ```text
 GOOGLE_SHEETS_BOOKS_SHEET_NAME=books
 GOOGLE_SHEETS_CATEGORIES_SHEET_NAME=categories
+GOOGLE_SHEETS_CATEGORY_VORONOI_SHEET_NAME=category_voronoi
 BOOKS_EXPORT_SCHEDULE_EXPRESSION=cron(0 3 * * ? *)
 BOOKS_EXPORT_SCHEDULE_TIMEZONE=Asia/Tokyo
 ```
@@ -52,6 +55,7 @@ Set these GitHub Variables so `cdk deploy` can create the schedule and wire the 
 - `GOOGLE_SHEETS_SPREADSHEET_ID`
 - `GOOGLE_SHEETS_BOOKS_SHEET_NAME`
 - `GOOGLE_SHEETS_CATEGORIES_SHEET_NAME`
+- `GOOGLE_SHEETS_CATEGORY_VORONOI_SHEET_NAME`
 - `BOOKS_EXPORT_SCHEDULE_EXPRESSION`
 - `BOOKS_EXPORT_SCHEDULE_TIMEZONE`
 

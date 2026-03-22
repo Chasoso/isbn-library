@@ -61,6 +61,7 @@ def test_export_books_to_sheets_writes_books_and_categories(
                 "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME": "/isbn-library/google-wif-config",
                 "GOOGLE_SHEETS_BOOKS_SHEET_NAME": "books",
                 "GOOGLE_SHEETS_CATEGORIES_SHEET_NAME": "categories",
+                "GOOGLE_SHEETS_CATEGORY_VORONOI_SHEET_NAME": "category_voronoi",
             },
             clear=False,
         ),
@@ -83,20 +84,27 @@ def test_export_books_to_sheets_writes_books_and_categories(
     assert status_code == 200
     assert body["booksCount"] == 1
     assert body["categoriesCount"] == 1
+    assert body["categoryVoronoiSheetName"] == "category_voronoi"
+    assert body["categoryVoronoiPointCount"] > 0
     credentials_factory.assert_called_once()
     fake_credentials.refresh.assert_called_once()
     assert post_mock.call_count == 2
 
     clear_payload = post_mock.call_args_list[0].kwargs["json"]
     update_payload = post_mock.call_args_list[1].kwargs["json"]
-    assert clear_payload == {"ranges": ["books!A:Z", "categories!A:Z"]}
+    assert clear_payload == {
+        "ranges": ["books!A:Z", "categories!A:Z", "category_voronoi!A:M"]
+    }
     assert update_payload["data"][0]["range"] == "books!A1"
     assert update_payload["data"][1]["range"] == "categories!A1"
+    assert update_payload["data"][2]["range"] == "category_voronoi!A1"
     assert update_payload["data"][0]["values"][0][0] == "isbn"
     assert "userId" not in update_payload["data"][0]["values"][0]
     assert "userId" not in update_payload["data"][1]["values"][0]
     assert update_payload["data"][0]["values"][1][0] == "9784860648114"
     assert update_payload["data"][0]["values"][1][8] == "Technology"
+    assert update_payload["data"][2]["values"][0][0] == "polygonId"
+    assert update_payload["data"][2]["values"][0][7] == "path"
 
 
 def test_export_books_to_sheets_handles_paginated_scans(
@@ -280,3 +288,77 @@ def test_export_books_to_sheets_surfaces_invalid_target_with_audience(
     assert status_code == 500
     assert "invalid_target from Google STS" in body["message"]
     assert "audience=//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/pool/providers/provider" in body["message"]
+
+
+def test_build_category_voronoi_rows_returns_full_semicircle_for_single_category() -> None:
+    rows = export_handler.build_category_voronoi_rows(
+        [
+            {
+                "userId": "user-123",
+                "categoryId": "technology",
+                "name": "Technology",
+                "sortOrder": 10,
+                "color": "#4C8BF5",
+            }
+        ],
+        [
+            {
+                "userId": "user-123",
+                "isbn": "9784860648114",
+                "categoryId": "technology",
+            }
+        ],
+    )
+
+    assert rows[0][0] == "polygonId"
+    assert len(rows) > 50
+    assert all(row[1] == "technology" for row in rows[1:])
+    assert rows[1][7] == 0
+    assert rows[-1][7] == len(rows) - 2
+    assert rows[1][8] == rows[-1][8]
+    assert rows[1][9] == rows[-1][9]
+
+
+def test_build_category_voronoi_rows_supports_multiple_categories_with_zero_count() -> None:
+    rows = export_handler.build_category_voronoi_rows(
+        [
+            {
+                "userId": "user-123",
+                "categoryId": "business",
+                "name": "Business",
+                "sortOrder": 20,
+                "color": "#F28C6C",
+            },
+            {
+                "userId": "user-123",
+                "categoryId": "technology",
+                "name": "Technology",
+                "sortOrder": 10,
+                "color": "#4C8BF5",
+            },
+        ],
+        [
+            {
+                "userId": "user-123",
+                "isbn": "9784860648114",
+                "categoryId": "technology",
+            }
+        ],
+    )
+
+    polygon_rows = rows[1:]
+    category_ids = {row[1] for row in polygon_rows}
+    assert category_ids == {"business", "technology"}
+
+    grouped_paths: dict[str, list[int]] = {}
+    for row in polygon_rows:
+        grouped_paths.setdefault(row[0], []).append(row[7])
+
+    for paths in grouped_paths.values():
+        assert paths == list(range(len(paths)))
+
+    business_rows = [row for row in polygon_rows if row[1] == "business"]
+    technology_rows = [row for row in polygon_rows if row[1] == "technology"]
+    assert business_rows[0][6] > 0
+    assert business_rows[0][5] == 0
+    assert technology_rows[0][5] == 1
