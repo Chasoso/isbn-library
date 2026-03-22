@@ -93,7 +93,7 @@ def test_export_books_to_sheets_writes_books_and_categories(
     clear_payload = post_mock.call_args_list[0].kwargs["json"]
     update_payload = post_mock.call_args_list[1].kwargs["json"]
     assert clear_payload == {
-        "ranges": ["books!A:Z", "categories!A:Z", "category_voronoi!A:M"]
+        "ranges": ["books!A:Z", "categories!A:Z", "category_voronoi!A:R"]
     }
     assert update_payload["data"][0]["range"] == "books!A1"
     assert update_payload["data"][1]["range"] == "categories!A1"
@@ -104,7 +104,8 @@ def test_export_books_to_sheets_writes_books_and_categories(
     assert update_payload["data"][0]["values"][1][0] == "9784860648114"
     assert update_payload["data"][0]["values"][1][8] == "Technology"
     assert update_payload["data"][2]["values"][0][0] == "polygonId"
-    assert update_payload["data"][2]["values"][0][7] == "path"
+    assert update_payload["data"][2]["values"][0][7] == "targetArea"
+    assert update_payload["data"][2]["values"][0][11] == "path"
 
 
 def test_export_books_to_sheets_handles_paginated_scans(
@@ -313,10 +314,12 @@ def test_build_category_voronoi_rows_returns_full_semicircle_for_single_category
     assert rows[0][0] == "polygonId"
     assert len(rows) > 50
     assert all(row[1] == "technology" for row in rows[1:])
-    assert rows[1][7] == 0
-    assert rows[-1][7] == len(rows) - 2
-    assert rows[1][8] == rows[-1][8]
-    assert rows[1][9] == rows[-1][9]
+    assert rows[1][11] == 0
+    assert rows[-1][11] == len(rows) - 2
+    assert rows[1][12] == rows[-1][12]
+    assert rows[1][13] == rows[-1][13]
+    assert abs(rows[1][7] - rows[1][8]) < 2.0
+    assert rows[1][10] < 0.001
 
 
 def test_build_category_voronoi_rows_supports_multiple_categories_with_zero_count() -> None:
@@ -352,7 +355,7 @@ def test_build_category_voronoi_rows_supports_multiple_categories_with_zero_coun
 
     grouped_paths: dict[str, list[int]] = {}
     for row in polygon_rows:
-        grouped_paths.setdefault(row[0], []).append(row[7])
+        grouped_paths.setdefault(row[0], []).append(row[11])
 
     for paths in grouped_paths.values():
         assert paths == list(range(len(paths)))
@@ -362,3 +365,7 @@ def test_build_category_voronoi_rows_supports_multiple_categories_with_zero_coun
     assert business_rows[0][6] > 0
     assert business_rows[0][5] == 0
     assert technology_rows[0][5] == 1
+    assert business_rows[0][7] > 0
+    assert technology_rows[0][7] > business_rows[0][7]
+    assert business_rows[0][10] <= 0.28
+    assert technology_rows[0][10] <= 0.28

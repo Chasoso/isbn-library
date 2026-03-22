@@ -269,7 +269,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             [
                 f"{books_sheet_name}!A:Z",
                 f"{categories_sheet_name}!A:Z",
-                f"{category_voronoi_sheet_name}!A:M",
+                f"{category_voronoi_sheet_name}!A:R",
             ],
         )
         update_sheets(
