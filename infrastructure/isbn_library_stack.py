@@ -288,7 +288,7 @@ class IsbnLibraryStack(Stack):
             "ExportBooksToSheetsLambda",
             code=lambda_.Code.from_asset("../backend/lambda/export_books_to_sheets"),
             handler="handler.handler",
-            timeout=Duration.seconds(60),
+            timeout=Duration.seconds(120),
             memory_size=512,
             runtime=lambda_.Runtime.PYTHON_3_12,
             layers=[shared_layer],
