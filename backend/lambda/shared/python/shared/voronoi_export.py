@@ -46,6 +46,7 @@ HARD_MIN_WIDTH = 11.5
 HARD_MAX_ASPECT_RATIO = 6.0
 HARD_MIN_COMPACTNESS = 0.1
 HARD_MIN_AREA_PER_PERIMETER = 3.2
+MAX_ELONGATION = 4.0
 
 VORONOI_HEADERS = [
     "polygonId",
@@ -960,8 +961,12 @@ def evaluate_partition_candidate(
     polygons = [child_a, child_b]
     groups = [group_a, group_b]
     compactness_values = [polygon_compactness(polygon) for polygon in polygons]
-    aspect_values = [polygon_aspect_ratio(polygon) for polygon in polygons]
-    minimum_widths = [polygon_true_minimum_width(polygon) for polygon in polygons]
+    aspect_values = []
+    minimum_widths = []
+    for polygon in polygons:
+        long_axis_length, short_axis_length = polygon_principal_axes_lengths(polygon)
+        aspect_values.append(long_axis_length / max(short_axis_length, EPSILON))
+        minimum_widths.append(polygon_area(polygon) / max(long_axis_length, EPSILON))
     edge_values = [edge_crowding_value(polygon) for polygon in polygons]
     label_fitness_values = [label_fitness_value(polygon) for polygon in polygons]
     narrowness_values = [polygon_narrowness_score(polygon) for polygon in polygons]
@@ -1032,8 +1037,21 @@ def build_small_leaf_group_layout(
     best_key: tuple[float, float, float, float] | None = None
     relaxed_candidate: tuple[list[dict[str, Any]], list[dict[str, Any]], Polygon, Polygon] | None = None
     relaxed_key: tuple[float, float, float, float] | None = None
+    parent_width, parent_height = polygon_bbox_dimensions(parent_polygon)
+    base_axis = 0.0 if parent_width >= parent_height else math.pi / 2
+    angle_candidates = sorted(
+        {
+            round(base_axis + offset, 6)
+            for offset in (
+                -1.25, -1.05, -0.85, -0.65, -0.45, -0.25, -0.12,
+                0.0,
+                0.12, 0.25, 0.45, 0.65, 0.85, 1.05, 1.25,
+                math.pi / 2,
+            )
+        }
+    )
     for group_a, group_b in candidate_groups:
-        for angle in [index * (math.pi / 24) for index in range(24)]:
+        for angle in angle_candidates:
             stats["split_candidate_count"] = int(stats["split_candidate_count"]) + 1
             partition = partition_polygon_by_line_and_ratio(
                 parent_polygon,
@@ -1124,9 +1142,12 @@ def compute_descendant_risk_score(
         total_area = sum(item["targetArea"] for item in group)
         small_count = sum(1 for item in group if item["targetArea"] <= 220.0)
         variance = mean(abs(item["targetArea"] - (total_area / len(group))) for item in group)
-        width_pressure = max(0.0, (required_width_for_recursive_group(group) + (len(group) - 1) * 1.4) - polygon_true_minimum_width(polygon))
+        long_axis_length, short_axis_length = polygon_principal_axes_lengths(polygon)
+        thickness = polygon_area(polygon) / max(long_axis_length, EPSILON)
+        elongation = long_axis_length / max(short_axis_length, EPSILON)
+        width_pressure = max(0.0, (required_width_for_recursive_group(group) + (len(group) - 1) * 1.4) - thickness)
         edge_pressure = edge_crowding_value(polygon)
-        shape_pressure = max(0.0, polygon_narrowness_score(polygon) - 3.1)
+        shape_pressure = max(0.0, elongation - 3.0)
         risks.append(
             width_pressure
             + (small_count * 0.35)
@@ -1368,9 +1389,10 @@ def compute_cell_metrics(
         relative_error = abs(area_error) / max(target_area, EPSILON)
         perimeter = polygon_perimeter(polygon)
         bbox_width, bbox_height = polygon_bbox_dimensions(polygon)
+        long_axis_length, short_axis_length = polygon_principal_axes_lengths(polygon)
         compactness = (4 * math.pi * actual_area) / max(perimeter * perimeter, EPSILON)
-        aspect_ratio = max(bbox_width, bbox_height) / max(min(bbox_width, bbox_height), EPSILON)
-        minimum_thickness = polygon_true_minimum_width(polygon)
+        aspect_ratio = long_axis_length / max(short_axis_length, EPSILON)
+        minimum_thickness = actual_area / max(long_axis_length, EPSILON)
         edge_crowding = edge_crowding_value(polygon)
         triangle_penalty = 1.0 if unique_vertex_count(polygon) <= 3 else 0.0
         narrowness_score = polygon_narrowness_score(polygon)
@@ -1400,6 +1422,10 @@ def compute_cell_metrics(
                 "trianglePenalty": triangle_penalty,
                 "narrownessScore": round(narrowness_score, 6),
                 "convexityRatio": round(convexity_ratio, 6),
+                "longAxisLength": round(long_axis_length, 6),
+                "shortAxisLength": round(short_axis_length, 6),
+                "elongation": round(aspect_ratio, 6),
+                "minThickness": round(minimum_thickness, 6),
                 "centroidX": round(centroid_x, 6),
                 "centroidY": round(centroid_y, 6),
             }
@@ -1429,6 +1455,10 @@ def summarize_strategy_metrics(
         "narrowness_score_mean": round(mean(metric["narrownessScore"] for metric in metrics), 6) if metrics else 0.0,
         "narrowness_score_max": round(max(metric["narrownessScore"] for metric in metrics), 6) if metrics else 0.0,
         "convexity_ratio_mean": round(mean(metric["convexityRatio"] for metric in metrics), 6) if metrics else 0.0,
+        "elongation_mean": round(mean(metric["elongation"] for metric in metrics), 6) if metrics else 0.0,
+        "elongation_max": round(max(metric["elongation"] for metric in metrics), 6) if metrics else 0.0,
+        "min_thickness_mean": round(mean(metric["minThickness"] for metric in metrics), 6) if metrics else 0.0,
+        "min_thickness_min": round(min(metric["minThickness"] for metric in metrics), 6) if metrics else 0.0,
         "descendant_risk_score": round(compute_descendant_risk_from_metrics(metrics), 6),
     }
 
@@ -2091,7 +2121,7 @@ def local_partition_score(
     triangle_penalty = sum(1 for polygon in polygons if unique_vertex_count(polygon) <= 3) * 1.6
     compactness_penalty = sum(max(0.0, 0.16 - polygon_compactness(polygon)) for polygon in polygons) * 3.4
     aspect_penalty = sum(max(0.0, polygon_aspect_ratio(polygon) - 4.5) for polygon in polygons) * 0.34
-    thickness_penalty = sum(max(0.0, 11.8 - polygon_true_minimum_width(polygon)) for polygon in polygons) * 0.55
+    thickness_penalty = sum(max(0.0, 11.0 - polygon_true_minimum_width(polygon)) for polygon in polygons) * 0.22
     narrowness_penalty = sum(max(0.0, polygon_narrowness_score(polygon) - 3.2) for polygon in polygons) * 0.95
     edge_penalty = sum(edge_crowding_value(polygon) for polygon in polygons) * 0.16
     center_penalty = count_center_shared_polygons(polygons) * 1.2
@@ -2146,11 +2176,13 @@ def polygon_satisfies_constraints(
         return False
     if unique_vertex_count(polygon) <= 3 and len(items) <= 1:
         return False
-    minimum_width = polygon_true_minimum_width(polygon)
+    long_axis_length, short_axis_length = polygon_principal_axes_lengths(polygon)
+    elongation = long_axis_length / max(short_axis_length, EPSILON)
+    minimum_width = polygon_area(polygon) / max(long_axis_length, EPSILON)
     required_width = required_width_for_items(items)
     if minimum_width < required_width:
         return False
-    if polygon_aspect_ratio(polygon) > HARD_MAX_ASPECT_RATIO:
+    if elongation > MAX_ELONGATION:
         return False
     if polygon_compactness(polygon) < HARD_MIN_COMPACTNESS:
         return False
@@ -2305,13 +2337,46 @@ def polygon_compactness(polygon: Polygon) -> float:
 
 
 def polygon_aspect_ratio(polygon: Polygon) -> float:
-    width, height = polygon_bbox_dimensions(polygon)
-    return max(width, height) / max(min(width, height), EPSILON)
+    long_axis_length, short_axis_length = polygon_principal_axes_lengths(polygon)
+    return long_axis_length / max(short_axis_length, EPSILON)
 
 
 def polygon_minimum_thickness(polygon: Polygon) -> float:
-    width, height = polygon_bbox_dimensions(polygon)
-    return min(width, height)
+    long_axis_length, _ = polygon_principal_axes_lengths(polygon)
+    return polygon_area(polygon) / max(long_axis_length, EPSILON)
+
+
+def polygon_principal_axes_lengths(polygon: Polygon) -> tuple[float, float]:
+    points = dedupe_polygon(polygon)
+    if len(points) < 2:
+        return 0.0, 0.0
+    if len(points) == 2:
+        length = math.hypot(points[1][0] - points[0][0], points[1][1] - points[0][1])
+        return length, 0.0
+
+    centroid_x = sum(point[0] for point in points) / len(points)
+    centroid_y = sum(point[1] for point in points) / len(points)
+    sxx = sum((point[0] - centroid_x) ** 2 for point in points) / len(points)
+    syy = sum((point[1] - centroid_y) ** 2 for point in points) / len(points)
+    sxy = sum((point[0] - centroid_x) * (point[1] - centroid_y) for point in points) / len(points)
+
+    if abs(sxy) <= EPSILON and abs(sxx - syy) <= EPSILON:
+        angle = 0.0
+    else:
+        angle = 0.5 * math.atan2(2 * sxy, sxx - syy)
+
+    axis = (math.cos(angle), math.sin(angle))
+    perpendicular = (-axis[1], axis[0])
+    long_projections = [(axis[0] * point[0]) + (axis[1] * point[1]) for point in points]
+    short_projections = [
+        (perpendicular[0] * point[0]) + (perpendicular[1] * point[1])
+        for point in points
+    ]
+    long_axis_length = max(long_projections) - min(long_projections)
+    short_axis_length = max(short_projections) - min(short_projections)
+    if short_axis_length > long_axis_length:
+        long_axis_length, short_axis_length = short_axis_length, long_axis_length
+    return long_axis_length, short_axis_length
 
 
 def polygon_true_minimum_width(polygon: Polygon) -> float:

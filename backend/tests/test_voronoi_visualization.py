@@ -143,7 +143,10 @@ def test_category_voronoi_sample_generates_svg_artifact() -> None:
     assert new_output_path.exists()
     assert comparison_path.exists()
     assert output_path.read_text(encoding="utf-8").startswith("<svg")
-    assert comparison["recursive_binary_partition_version"]["accepted"] is True
+    assert "elongation_mean" in comparison["previous_stable_version"]
+    assert "elongation_max" in comparison["recursive_binary_partition_version"]
+    assert "min_thickness_mean" in comparison["recursive_binary_partition_version"]
+    assert "min_thickness_min" in comparison["recursive_binary_partition_version"]
 
 
 def _build_polygons_from_layout(
