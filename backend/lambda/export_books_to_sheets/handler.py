@@ -28,6 +28,7 @@ from shared.voronoi_export import build_category_voronoi_rows
 BOOK_HEADERS = [
     "isbn",
     "title",
+    "titleEn",
     "author",
     "publisher",
     "publishedDate",

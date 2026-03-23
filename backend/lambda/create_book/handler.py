@@ -13,10 +13,11 @@ from shared.isbn import normalize_isbn
 from shared.logging_utils import log_request, log_response
 from shared.responses import json_response
 from shared.statuses import DEFAULT_READING_STATUS, READING_STATUSES
+from shared.title_en import resolve_english_title
 
 
 def build_item(user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    return {
+    item = {
         "userId": user_id,
         "isbn": payload["isbn"],
         "title": payload.get("title", ""),
@@ -29,6 +30,8 @@ def build_item(user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         "readingStatus": payload.get("readingStatus", DEFAULT_READING_STATUS),
         "createdAt": datetime.now(timezone.utc).isoformat(),
     }
+    item.update(resolve_english_title(payload))
+    return item
 
 
 def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:

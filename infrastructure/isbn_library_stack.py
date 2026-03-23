@@ -262,6 +262,17 @@ class IsbnLibraryStack(Stack):
             handler="handler.handler",
             **common_lambda_props,
         )
+        patch_book_titles_en_lambda = lambda_.Function(
+            self,
+            "PatchBookTitlesEnLambda",
+            code=lambda_.Code.from_asset("../backend/lambda/patch_book_titles_en"),
+            handler="handler.handler",
+            timeout=Duration.seconds(60),
+            memory_size=256,
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            layers=[shared_layer],
+            environment=common_environment,
+        )
         get_categories_lambda = lambda_.Function(
             self,
             "GetCategoriesLambda",
@@ -301,6 +312,7 @@ class IsbnLibraryStack(Stack):
             create_book_lambda,
             delete_book_lambda,
             update_book_status_lambda,
+            patch_book_titles_en_lambda,
             export_books_to_sheets_lambda,
         ]:
             books_table.grant_read_write_data(fn)
@@ -325,6 +337,14 @@ class IsbnLibraryStack(Stack):
                     resources=[
                         f"arn:aws:ssm:{Stack.of(self).region}:{Stack.of(self).account}:parameter/{normalized_parameter_name}"
                     ],
+                )
+            )
+
+        for fn in [create_book_lambda, patch_book_titles_en_lambda]:
+            fn.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=["translate:TranslateText"],
+                    resources=["*"],
                 )
             )
 
@@ -449,3 +469,4 @@ class IsbnLibraryStack(Stack):
         CfnOutput(self, "BooksTableName", value=books_table.table_name)
         CfnOutput(self, "CategoriesTableName", value=categories_table.table_name)
         CfnOutput(self, "BooksExportFunctionName", value=export_books_to_sheets_lambda.function_name)
+        CfnOutput(self, "PatchBookTitlesEnFunctionName", value=patch_book_titles_en_lambda.function_name)

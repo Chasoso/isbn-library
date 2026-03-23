@@ -39,6 +39,8 @@ def test_to_book_response_defaults_classification_and_status() -> None:
     assert response["categoryId"] == DEFAULT_CATEGORY_ID
     assert response["categoryName"] == DEFAULT_CATEGORY_NAME
     assert response["readingStatus"] == DEFAULT_READING_STATUS
+    assert response["titleEn"] == ""
+    assert response["titleEnSource"] == "none"
 
 
 def test_get_user_id_raises_when_claim_missing() -> None:
