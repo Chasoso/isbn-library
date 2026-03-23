@@ -22,6 +22,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         log_request("create_category", event, user_id)
         payload = json.loads(event.get("body") or "{}")
         name = str(payload.get("name", "")).strip()
+        name_en = str(payload.get("nameEn", "")).strip()
         color = str(payload.get("color", "")).strip()
 
         if not name:
@@ -39,6 +40,7 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             user_id=user_id,
             category_id=f"cat_{uuid.uuid4().hex[:10]}",
             name=name,
+            name_en=name_en,
             sort_order=sort_order,
             color=color,
         )

@@ -43,6 +43,7 @@ BOOK_HEADERS = [
 CATEGORY_HEADERS = [
     "categoryId",
     "name",
+    "nameEn",
     "sortOrder",
     "color",
     "createdAt",
@@ -142,6 +143,7 @@ def build_categories_rows(items: list[dict[str, Any]]) -> list[list[str]]:
             [
                 str(category.get("categoryId", "")),
                 str(category.get("name", "")),
+                str(category.get("nameEn", "")),
                 str(category.get("sortOrder", "")),
                 str(category.get("color", "")),
                 str(category.get("createdAt", "")),

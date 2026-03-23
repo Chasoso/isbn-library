@@ -35,6 +35,7 @@ def test_export_books_to_sheets_writes_books_and_categories(
                     "userId": "user-123",
                     "categoryId": "technology",
                     "name": "Technology",
+                    "nameEn": "Technology",
                     "sortOrder": 10,
                     "color": "#4C8BF5",
                     "createdAt": "2026-03-20T00:00:00+00:00",
@@ -105,6 +106,8 @@ def test_export_books_to_sheets_writes_books_and_categories(
     assert update_payload["data"][0]["values"][1][0] == "9784860648114"
     assert update_payload["data"][0]["values"][1][1] == "Book"
     assert update_payload["data"][0]["values"][1][2] == "Book"
+    assert update_payload["data"][1]["values"][0][2] == "nameEn"
+    assert update_payload["data"][1]["values"][1][2] == "Technology"
     assert update_payload["data"][0]["values"][1][9] == "Technology"
     assert update_payload["data"][2]["values"][0][0] == "polygonId"
     assert update_payload["data"][2]["values"][0][7] == "targetArea"

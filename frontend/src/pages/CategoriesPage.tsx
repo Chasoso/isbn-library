@@ -7,6 +7,7 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
   const [categories, setCategories] = useState<CategoryDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
+  const [newNameEn, setNewNameEn] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -32,11 +33,15 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
     setSaving(true);
     setMessage(null);
     try {
-      const created = await createCategory(accessToken, { name: newName.trim() });
+      const created = await createCategory(accessToken, {
+        name: newName.trim(),
+        nameEn: newNameEn.trim(),
+      });
       setCategories((prev) =>
         [...prev, created].sort((left, right) => left.sortOrder - right.sortOrder),
       );
       setNewName("");
+      setNewNameEn("");
       setMessage("カテゴリを追加しました。");
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
@@ -49,12 +54,15 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
     }
   };
 
-  const handleRename = async (categoryId: string, name: string): Promise<void> => {
+  const handleRename = async (categoryId: string, name: string, nameEn: string): Promise<void> => {
     const trimmed = name.trim();
     if (!trimmed) return;
 
     try {
-      const updated = await updateCategory(accessToken, categoryId, { name: trimmed });
+      const updated = await updateCategory(accessToken, categoryId, {
+        name: trimmed,
+        nameEn: nameEn.trim(),
+      });
       setCategories((prev) =>
         prev
           .map((item) => (item.categoryId === categoryId ? updated : item))
@@ -71,7 +79,7 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <AppLayout title="カテゴリ管理" subtitle="蔵書の分類を柔軟に整える">
+    <AppLayout title="カテゴリ管理" subtitle="蔵書の分類を自由に整える">
       <section className="panel category-settings">
         <div className="section-heading">
           <div>
@@ -86,6 +94,12 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
             onChange={(event) => setNewName(event.target.value)}
             placeholder="新しいカテゴリ名"
             aria-label="新しいカテゴリ名"
+          />
+          <input
+            value={newNameEn}
+            onChange={(event) => setNewNameEn(event.target.value)}
+            placeholder="English category name"
+            aria-label="English category name"
           />
           <button className="primary-pill" onClick={() => void handleCreate()} disabled={saving}>
             追加
@@ -113,28 +127,41 @@ function CategoryRow({
   onSave,
 }: {
   category: CategoryDefinition;
-  onSave: (categoryId: string, name: string) => Promise<void>;
+  onSave: (categoryId: string, name: string, nameEn: string) => Promise<void>;
 }) {
   const [name, setName] = useState(category.name);
+  const [nameEn, setNameEn] = useState(category.nameEn ?? "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setName(category.name);
-  }, [category.name]);
+    setNameEn(category.nameEn ?? "");
+  }, [category.name, category.nameEn]);
 
   return (
     <div className="category-card">
       <div className="category-card-meta">
         <span className="section-label">#{category.sortOrder}</span>
         <strong>{category.name}</strong>
+        {category.nameEn ? <span className="subtle">{category.nameEn}</span> : null}
       </div>
       <div className="category-card-editor">
-        <input value={name} onChange={(event) => setName(event.target.value)} aria-label={`${category.name} の編集`} />
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          aria-label={`${category.name} の日本語名`}
+        />
+        <input
+          value={nameEn}
+          onChange={(event) => setNameEn(event.target.value)}
+          aria-label={`${category.name} の英語名`}
+          placeholder="English name"
+        />
         <button
           className="secondary-pill"
           onClick={() => {
             setSaving(true);
-            void onSave(category.categoryId, name).finally(() => setSaving(false));
+            void onSave(category.categoryId, name, nameEn).finally(() => setSaving(false));
           }}
           disabled={saving}
         >

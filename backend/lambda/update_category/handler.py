@@ -47,6 +47,10 @@ def handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
             updates.append("color = :color")
             values[":color"] = str(payload.get("color", "")).strip()
 
+        if "nameEn" in payload:
+            updates.append("nameEn = :nameEn")
+            values[":nameEn"] = str(payload.get("nameEn", "")).strip()
+
         if "sortOrder" in payload:
             try:
                 sort_order = int(payload.get("sortOrder", 0))

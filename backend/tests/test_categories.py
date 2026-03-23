@@ -31,7 +31,8 @@ def test_build_category_item_uses_timestamp_and_normalized_name() -> None:
     item = build_category_item(
         user_id="user-123",
         category_id="cat-1",
-        name="  Data   Science  ",
+        name="技術書",
+        name_en="Technology",
         sort_order=10,
         color="#123456",
         timestamp="2026-03-23T00:00:00+00:00",
@@ -40,8 +41,9 @@ def test_build_category_item_uses_timestamp_and_normalized_name() -> None:
     assert item == {
         "userId": "user-123",
         "categoryId": "cat-1",
-        "name": "  Data   Science  ",
-        "normalizedName": "data science",
+        "name": "技術書",
+        "nameEn": "Technology",
+        "normalizedName": "技術書",
         "sortOrder": 10,
         "color": "#123456",
         "createdAt": "2026-03-23T00:00:00+00:00",
@@ -90,11 +92,11 @@ def test_ensure_default_categories_returns_sorted_existing_items() -> None:
 def test_get_categories_by_id_and_default_category() -> None:
     with patch(
         "shared.categories.list_categories",
-        return_value=[{"categoryId": "technology", "name": "Tech", "sortOrder": 10}],
+        return_value=[{"categoryId": "technology", "name": "Technology", "sortOrder": 10}],
     ):
         items_by_id = get_categories_by_id("user-123")
 
-    assert items_by_id["technology"]["name"] == "Tech"
+    assert items_by_id["technology"]["name"] == "Technology"
     assert get_default_category() == {"categoryId": DEFAULT_CATEGORY_ID, "name": DEFAULT_CATEGORY_NAME}
 
 
@@ -103,6 +105,7 @@ def test_category_response_uses_defaults() -> None:
 
     assert response["categoryId"] == "other"
     assert response["name"] == DEFAULT_CATEGORY_NAME
+    assert response["nameEn"] == ""
     assert response["sortOrder"] == 0
     assert response["color"] == ""
 
@@ -115,17 +118,18 @@ def test_get_categories_returns_items(lambda_event: dict[str, object]) -> None:
     with patch.object(
         get_categories_handler,
         "list_categories",
-        return_value=[{"categoryId": "technology", "name": "謚陦捺嶌", "sortOrder": 10}],
+        return_value=[{"categoryId": "technology", "name": "Technology", "nameEn": "Technology", "sortOrder": 10}],
     ):
         status_code, body = parse_response(get_categories_handler.handler(lambda_event, None))
 
     assert status_code == 200
     assert body["items"][0]["categoryId"] == "technology"
+    assert body["items"][0]["nameEn"] == "Technology"
 
 
 def test_create_category_success(lambda_event: dict[str, object]) -> None:
     table = Mock()
-    lambda_event["body"] = json.dumps({"name": "繝・・繧ｿ蛻・梵"}, ensure_ascii=False)
+    lambda_event["body"] = json.dumps({"name": "技術書", "nameEn": "Technology"}, ensure_ascii=False)
 
     with (
         patch.object(create_category_handler, "get_categories_table", return_value=table),
@@ -134,7 +138,8 @@ def test_create_category_success(lambda_event: dict[str, object]) -> None:
         status_code, body = parse_response(create_category_handler.handler(lambda_event, None))
 
     assert status_code == 201
-    assert body["name"] == "繝・・繧ｿ蛻・梵"
+    assert body["name"] == "技術書"
+    assert body["nameEn"] == "Technology"
     table.put_item.assert_called_once()
 
 
@@ -148,12 +153,12 @@ def test_create_category_requires_name(lambda_event: dict[str, object]) -> None:
 
 
 def test_create_category_returns_409_for_duplicate_name(lambda_event: dict[str, object]) -> None:
-    lambda_event["body"] = json.dumps({"name": "謚陦捺嶌"}, ensure_ascii=False)
+    lambda_event["body"] = json.dumps({"name": "技術書"}, ensure_ascii=False)
 
     with patch.object(
         create_category_handler,
         "list_categories",
-        return_value=[{"categoryId": "technology", "normalizedName": "謚陦捺嶌"}],
+        return_value=[{"categoryId": "technology", "normalizedName": "技術書"}],
     ):
         status_code, body = parse_response(create_category_handler.handler(lambda_event, None))
 
@@ -202,25 +207,27 @@ def test_update_category_success(lambda_event: dict[str, object]) -> None:
     table.update_item.return_value = {
         "Attributes": {
             "categoryId": "technology",
-            "name": "謚陦薙・IT",
+            "name": "技術 / IT",
+            "nameEn": "Technology / IT",
             "sortOrder": 10,
         }
     }
     lambda_event["pathParameters"] = {"categoryId": "technology"}
-    lambda_event["body"] = json.dumps({"name": "謚陦薙・IT"}, ensure_ascii=False)
+    lambda_event["body"] = json.dumps({"name": "技術 / IT", "nameEn": "Technology / IT"}, ensure_ascii=False)
 
     with (
         patch.object(update_category_handler, "get_categories_table", return_value=table),
         patch.object(
             update_category_handler,
             "list_categories",
-            return_value=[{"categoryId": "technology", "normalizedName": "謚陦捺嶌"}],
+            return_value=[{"categoryId": "technology", "normalizedName": "技術書"}],
         ),
     ):
         status_code, body = parse_response(update_category_handler.handler(lambda_event, None))
 
     assert status_code == 200
-    assert body["name"] == "謚陦薙・IT"
+    assert body["name"] == "技術 / IT"
+    assert body["nameEn"] == "Technology / IT"
 
 
 def test_update_category_requires_category_id(lambda_event: dict[str, object]) -> None:
@@ -265,14 +272,14 @@ def test_update_category_requires_fields_to_update(lambda_event: dict[str, objec
 
 def test_update_category_returns_409_for_duplicate_name(lambda_event: dict[str, object]) -> None:
     lambda_event["pathParameters"] = {"categoryId": "technology"}
-    lambda_event["body"] = json.dumps({"name": "重複名"}, ensure_ascii=False)
+    lambda_event["body"] = json.dumps({"name": "ビジネス"}, ensure_ascii=False)
 
     with patch.object(
         update_category_handler,
         "list_categories",
         return_value=[
             {"categoryId": "technology", "normalizedName": "technology"},
-            {"categoryId": "business", "normalizedName": "重複名"},
+            {"categoryId": "business", "normalizedName": "ビジネス"},
         ],
     ):
         status_code, body = parse_response(update_category_handler.handler(lambda_event, None))

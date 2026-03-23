@@ -4,6 +4,7 @@ import type { ReadingStatus } from "./readingStatus";
 export interface CategoryDefinition {
   categoryId: string;
   name: string;
+  nameEn?: string;
   sortOrder: number;
   color?: string;
   createdAt: string;
@@ -42,11 +43,13 @@ export interface CreateBookPayload extends BookLookupResult {
 
 export interface CreateCategoryPayload {
   name: string;
+  nameEn?: string;
   color?: string;
 }
 
 export interface UpdateCategoryPayload {
   name?: string;
+  nameEn?: string;
   color?: string;
   sortOrder?: number;
 }

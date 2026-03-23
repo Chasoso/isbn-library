@@ -35,6 +35,7 @@ const demoCategories: CategoryDefinition[] = [
   {
     categoryId: "technology",
     name: "技術書",
+    nameEn: "Technology",
     sortOrder: 10,
     color: "#4C8BF5",
     createdAt: "2026-03-20T10:00:00Z",
@@ -43,6 +44,7 @@ const demoCategories: CategoryDefinition[] = [
   {
     categoryId: "business",
     name: "ビジネス",
+    nameEn: "Business",
     sortOrder: 20,
     color: "#35A271",
     createdAt: "2026-03-20T10:00:00Z",
@@ -51,6 +53,7 @@ const demoCategories: CategoryDefinition[] = [
   {
     categoryId: defaultCategoryId,
     name: "その他",
+    nameEn: "Other",
     sortOrder: 90,
     color: "#8FA2B6",
     createdAt: "2026-03-20T10:00:00Z",
@@ -58,18 +61,15 @@ const demoCategories: CategoryDefinition[] = [
   },
 ];
 
-const categoryName = (categoryId: string): string =>
-  memoryCategories.find((item) => item.categoryId === categoryId)?.name ?? "その他";
-
 const demoBooks: Book[] = [
   {
     userId: "demo-user",
     isbn: "9784860648114",
-    title: "ネイティブが日常会話でよく使っている感じがいい英語フレーズ大全",
+    title: "感じがいい英語フレーズ大全",
     author: "Blake Turnbull",
-    publisher: "ベレ出版",
+    publisher: "Beret Publishing",
     publishedDate: "2024-03-12",
-    coverImageUrl: createMockCover("英語フレーズ大全", "#35b6b0", "ビジネス"),
+    coverImageUrl: createMockCover("感じがいい英語フレーズ大全", "#35b6b0", "Business"),
     bookFormat: "単行本",
     categoryId: "business",
     categoryName: "ビジネス",
@@ -83,7 +83,11 @@ const demoBooks: Book[] = [
     author: "黒須 義一, 酒井 真弓, 宮本 佳歩",
     publisher: "翔泳社",
     publishedDate: "2025-01-20",
-    coverImageUrl: createMockCover("コミュニティの中でしていること", "#f0b24f", "技術書"),
+    coverImageUrl: createMockCover(
+      "優れたエンジニアがコミュニティの中でしていること",
+      "#f0b24f",
+      "Technology",
+    ),
     bookFormat: "単行本",
     categoryId: "technology",
     categoryName: "技術書",
@@ -95,9 +99,9 @@ const demoBooks: Book[] = [
     isbn: "9784295018599",
     title: "Atomic Habits",
     author: "James Clear",
-    publisher: "パンローリング",
+    publisher: "PanRolling",
     publishedDate: "2022-11-02",
-    coverImageUrl: createMockCover("Atomic Habits", "#7ab7cf", "その他"),
+    coverImageUrl: createMockCover("Atomic Habits", "#7ab7cf", "Other"),
     bookFormat: "ハードカバー",
     categoryId: defaultCategoryId,
     categoryName: "その他",
@@ -108,6 +112,9 @@ const demoBooks: Book[] = [
 
 let memoryBooks = [...demoBooks];
 let memoryCategories = [...demoCategories];
+
+const categoryName = (categoryId: string): string =>
+  memoryCategories.find((item) => item.categoryId === categoryId)?.name ?? "その他";
 
 const matchesQuery = (book: Book, query?: string): boolean => {
   if (!query) return true;
@@ -165,7 +172,7 @@ export const mockSession = {
       author: "デモ著者",
       publisher: "デモ出版社",
       publishedDate: "2026-03-01",
-      coverImageUrl: createMockCover("新しく見つかった本", "#9ab7da", "その他"),
+      coverImageUrl: createMockCover("新しく見つかった本", "#9ab7da", "Other"),
     };
   },
   createBook(payload: CreateBookPayload): Book {
@@ -192,6 +199,7 @@ export const mockSession = {
     const created: CategoryDefinition = {
       categoryId: `cat_${memoryCategories.length + 1}`,
       name,
+      nameEn: payload.nameEn?.trim() ?? "",
       color: payload.color ?? "",
       sortOrder:
         Math.max(...memoryCategories.map((item) => item.sortOrder), 0) + 10,
@@ -211,6 +219,9 @@ export const mockSession = {
       memoryBooks = memoryBooks.map((book) =>
         book.categoryId === categoryId ? { ...book, categoryName: category.name } : book,
       );
+    }
+    if (payload.nameEn !== undefined) {
+      category.nameEn = payload.nameEn.trim();
     }
     if (payload.color !== undefined) {
       category.color = payload.color;
