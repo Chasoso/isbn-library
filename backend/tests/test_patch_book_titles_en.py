@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from botocore.exceptions import ClientError
 from unittest.mock import Mock, patch
 
 from conftest import load_handler_module, parse_response
@@ -226,3 +227,54 @@ def test_patch_book_titles_en_is_idempotent_for_resolved_titles() -> None:
     assert body["targetCount"] == 0
     assert body["skippedCount"] == 1
     table.update_item.assert_not_called()
+
+
+def test_patch_book_titles_en_handles_invalid_limit_and_next_key() -> None:
+    table = Mock()
+    table.scan.return_value = {"Items": []}
+
+    with patch.object(patch_titles_handler, "get_books_table", return_value=table):
+        status_code, body = parse_response(
+            patch_titles_handler.handler(
+                {
+                    "dryRun": True,
+                    "limit": "invalid",
+                    "nextKey": {"userId": "", "isbn": ""},
+                },
+                None,
+            )
+        )
+
+    assert status_code == 200
+    assert body["scannedCount"] == 0
+    table.scan.assert_called_once_with(Limit=50)
+
+
+def test_patch_book_titles_en_counts_update_client_error_as_failed() -> None:
+    table = Mock()
+    table.scan.return_value = {"Items": [make_book()]}
+    table.update_item.side_effect = ClientError(
+        {"Error": {"Code": "ProvisionedThroughputExceededException", "Message": "throttled"}},
+        "UpdateItem",
+    )
+
+    with (
+        patch.object(patch_titles_handler, "get_books_table", return_value=table),
+        patch.object(
+            patch_titles_handler,
+            "resolve_english_title",
+            return_value={
+                "titleEn": "Sample Book",
+                "titleEnSource": "external_metadata",
+                "titleEnStatus": "resolved",
+                "titleEnUpdatedAt": "2026-03-23T00:00:00+00:00",
+            },
+        ),
+    ):
+        status_code, body = parse_response(
+            patch_titles_handler.handler({"dryRun": False, "limit": 50}, None)
+        )
+
+    assert status_code == 200
+    assert body["failedCount"] == 1
+    assert body["updatedCount"] == 0
