@@ -109,6 +109,8 @@ def test_export_books_to_sheets_writes_books_and_categories(
     assert update_payload["data"][1]["values"][0][2] == "nameEn"
     assert update_payload["data"][1]["values"][1][2] == "Technology"
     assert update_payload["data"][0]["values"][1][9] == "Technology"
+    assert update_payload["data"][0]["values"][0][10] == "categorySequence"
+    assert update_payload["data"][0]["values"][1][10] == "1"
     assert update_payload["data"][2]["values"][0][0] == "polygonId"
     assert update_payload["data"][2]["values"][0][7] == "targetArea"
     assert update_payload["data"][2]["values"][0][11] == "compactness"
@@ -175,6 +177,46 @@ def test_export_books_to_sheets_handles_paginated_scans(
     assert status_code == 200
     assert body["booksCount"] == 2
     assert books_table.scan.call_count == 2
+
+
+def test_build_books_rows_assigns_category_sequence_per_category() -> None:
+    rows = export_handler.build_books_rows(
+        [
+            {
+                "userId": "user-123",
+                "isbn": "9780000000002",
+                "title": "Second",
+                "categoryId": "technology",
+                "createdAt": "2026-03-21T00:00:01+00:00",
+            },
+            {
+                "userId": "user-123",
+                "isbn": "9780000000001",
+                "title": "First",
+                "categoryId": "technology",
+                "createdAt": "2026-03-21T00:00:00+00:00",
+            },
+            {
+                "userId": "user-123",
+                "isbn": "9780000000003",
+                "title": "Business",
+                "categoryId": "business",
+                "createdAt": "2026-03-21T00:00:02+00:00",
+            },
+        ],
+        {
+            ("user-123", "technology"): "Technology",
+            ("user-123", "business"): "Business",
+        },
+    )
+
+    assert rows[0][10] == "categorySequence"
+    assert rows[1][0] == "9780000000001"
+    assert rows[1][10] == "1"
+    assert rows[2][0] == "9780000000002"
+    assert rows[2][10] == "2"
+    assert rows[3][0] == "9780000000003"
+    assert rows[3][10] == "1"
 
 
 def test_export_books_to_sheets_requires_configuration(

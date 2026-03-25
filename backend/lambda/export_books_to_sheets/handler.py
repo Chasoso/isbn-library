@@ -36,6 +36,7 @@ BOOK_HEADERS = [
     "bookFormat",
     "categoryId",
     "categoryName",
+    "categorySequence",
     "readingStatus",
     "createdAt",
 ]
@@ -109,6 +110,7 @@ def build_books_rows(
     category_map: dict[tuple[str, str], str],
 ) -> list[list[str]]:
     rows: list[list[str]] = [BOOK_HEADERS]
+    category_sequence_map: dict[tuple[str, str], int] = {}
     sorted_items = sorted(
         items,
         key=lambda item: (
@@ -122,6 +124,9 @@ def build_books_rows(
             item,
             category_name=category_map.get((item["userId"], item.get("categoryId", ""))),
         )
+        category_key = (str(item.get("userId", "")), str(book.get("categoryId", "")))
+        category_sequence_map[category_key] = category_sequence_map.get(category_key, 0) + 1
+        book["categorySequence"] = category_sequence_map[category_key]
         rows.append([str(book.get(column, "")) for column in BOOK_HEADERS])
 
     return rows
