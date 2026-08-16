@@ -6,16 +6,17 @@ import { CoverFlowShelf } from "../components/CoverFlowShelf";
 import { getBooks, getCategories } from "../lib/api";
 import { readingStatuses } from "../readingStatus";
 import type { Book, CategoryDefinition } from "../types";
-import { SearchBar, sortBooks } from "../view-helpers";
+import { sortBooks } from "../view-helpers";
 
 const sortOptions = [
-  { value: "newest", label: "登録日が新しい順" },
-  { value: "oldest", label: "登録日が古い順" },
-  { value: "title", label: "タイトル順" },
-  { value: "author", label: "著者順" },
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "title", label: "Title" },
+  { value: "author", label: "Author" },
 ] as const;
 
 type SortOption = (typeof sortOptions)[number]["value"];
+type ViewMode = "grid" | "list";
 
 export function BooksPage({ accessToken }: { accessToken: string }) {
   const location = useLocation();
@@ -35,7 +36,9 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
   const [categoryFilter, setCategoryFilter] = useState(categoryId);
   const [readingStatusFilter, setReadingStatusFilter] = useState(readingStatus);
   const [sortValue, setSortValue] = useState<SortOption>(sort);
+  const [view, setView] = useState<ViewMode>("grid");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
     setSearchText(query);
@@ -112,87 +115,246 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
     navigate,
   ]);
 
+  const activeChips = [
+    sortValue !== "newest" ? sortOptions.find((item) => item.value === sortValue)?.label : "",
+    bookFormatFilter,
+    categoryFilter ? categories.find((item) => item.categoryId === categoryFilter)?.name ?? categoryFilter : "",
+    readingStatusFilter,
+  ].filter(Boolean);
+
   return (
-    <AppLayout title="蔵書一覧" subtitle="本棚を眺めるように管理する">
-      <section className="panel library-toolbar">
-        <div className="library-toolbar-main">
-          <div className="stat-chip">
-            <strong>{books.length}</strong>
-            <span>Books</span>
-          </div>
-          <SearchBar
+    <AppLayout title="Books" subtitle="Search, filter, and browse the shelf.">
+      <section className="panel library-tools">
+        <div className="search-box">
+          <span aria-hidden="true">⌕</span>
+          <input
             value={searchText}
-            onChange={setSearchText}
-            placeholder="タイトル・著者で検索"
-            submitLabel="検索"
-            onSubmit={() => {
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="Search title or author"
+            aria-label="Search title or author"
+          />
+          <button
+            type="button"
+            onClick={() => {
               const nextSearch = buildFilterSearch();
               navigate(`/books${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
             }}
-          />
+          >
+            Search
+          </button>
         </div>
-        <div className="toolbar-controls">
-          <label>
-            <span>並び替え</span>
-            <select value={sortValue} onChange={(event) => setSortValue(event.target.value as SortOption)}>
-              {sortOptions.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>カテゴリ</span>
-            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-              <option value="">すべて</option>
-              {categories.map((item) => (
-                <option key={item.categoryId} value={item.categoryId}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>形態</span>
-            <select value={bookFormatFilter} onChange={(event) => setBookFormatFilter(event.target.value)}>
-              <option value="">すべて</option>
-              {bookFormats.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>読書ステータス</span>
-            <select value={readingStatusFilter} onChange={(event) => setReadingStatusFilter(event.target.value)}>
-              <option value="">すべて</option>
-              {readingStatuses.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Link className="secondary-pill category-manage-link" to="/categories">
-            カテゴリ管理
-          </Link>
+
+        <div className="desktop-filters">
+          <div className="toolbar-controls">
+            <label>
+              <span>Sort</span>
+              <select value={sortValue} onChange={(event) => setSortValue(event.target.value as SortOption)}>
+                {sortOptions.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Category</span>
+              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                <option value="">All</option>
+                {categories.map((item) => (
+                  <option key={item.categoryId} value={item.categoryId}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Format</span>
+              <select value={bookFormatFilter} onChange={(event) => setBookFormatFilter(event.target.value)}>
+                <option value="">All</option>
+                {bookFormats.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Status</span>
+              <select value={readingStatusFilter} onChange={(event) => setReadingStatusFilter(event.target.value)}>
+                <option value="">All</option>
+                {readingStatuses.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Link className="secondary-pill category-manage-link" to="/categories">
+              Manage categories
+            </Link>
+          </div>
         </div>
+
+        <div className="mobile-tool-row">
+          <button className="filter-button" type="button" onClick={() => setFilterOpen(true)}>
+            Filters
+            {activeChips.length > 0 ? <b>{activeChips.length}</b> : null}
+          </button>
+          <div className="view-toggle">
+            <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")}>
+              Grid
+            </button>
+            <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")}>
+              List
+            </button>
+          </div>
+        </div>
+
+        {activeChips.length > 0 ? (
+          <div className="active-chips">
+            {activeChips.map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setSearchText("");
+                setBookFormatFilter("");
+                setCategoryFilter("");
+                setReadingStatusFilter("");
+                setSortValue("newest");
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        ) : null}
       </section>
 
-      <section className="bookshelf-section">
-        {loading ? <div className="panel empty-state">本棚を読み込み中です...</div> : null}
+      <section className="panel results-section">
+        <div className="results-heading">
+          <p>
+            <strong>{books.length}</strong> books
+          </p>
+          <div className="desktop-view-toggle view-toggle">
+            <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")}>
+              Grid
+            </button>
+            <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")}>
+              List
+            </button>
+          </div>
+        </div>
+
+        {loading ? <div className="empty-state">Loading books...</div> : null}
         {!loading && books.length === 0 ? (
-          <div className="panel empty-state">
-            <p>条件に合う蔵書はありません。</p>
-            <p className="subtle">検索語やフィルタを変えるか、右下のボタンから新しく登録してください。</p>
+          <div className="empty-state">
+            <h3>No books found</h3>
+            <p>Try another search or loosen the filters.</p>
           </div>
         ) : null}
         {!loading && books.length > 0 ? (
-          <CoverFlowShelf books={books} activeIndex={activeIndex} onActiveIndexChange={setActiveIndex} />
+          <CoverFlowShelf
+            books={books}
+            activeIndex={activeIndex}
+            onActiveIndexChange={setActiveIndex}
+            layout={view}
+          />
         ) : null}
       </section>
+
+      {filterOpen ? (
+        <div className="modal-backdrop" onMouseDown={() => setFilterOpen(false)}>
+          <section
+            className="filter-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="books-filter-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="sheet-heading">
+              <div>
+                <p className="eyebrow">FILTERS</p>
+                <h2 id="books-filter-title">Refine the shelf</h2>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setFilterOpen(false)}
+                aria-label="Close filters"
+              >
+                ×
+              </button>
+            </div>
+            <div className="filter-fields">
+              <label>
+                <span>Sort</span>
+                <select value={sortValue} onChange={(event) => setSortValue(event.target.value as SortOption)}>
+                  {sortOptions.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Category</span>
+                <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                  <option value="">All</option>
+                  {categories.map((item) => (
+                    <option key={item.categoryId} value={item.categoryId}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Format</span>
+                <select value={bookFormatFilter} onChange={(event) => setBookFormatFilter(event.target.value)}>
+                  <option value="">All</option>
+                  {bookFormats.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Status</span>
+                <select
+                  value={readingStatusFilter}
+                  onChange={(event) => setReadingStatusFilter(event.target.value)}
+                >
+                  <option value="">All</option>
+                  {readingStatuses.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="sheet-actions">
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => {
+                  setSearchText("");
+                  setBookFormatFilter("");
+                  setCategoryFilter("");
+                  setReadingStatusFilter("");
+                  setSortValue("newest");
+                }}
+              >
+                Reset
+              </button>
+              <button type="button" className="primary-button" onClick={() => setFilterOpen(false)}>
+                Show {books.length} books
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </AppLayout>
   );
 }

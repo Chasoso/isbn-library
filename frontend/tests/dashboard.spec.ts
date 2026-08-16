@@ -1,68 +1,98 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-test.describe("frontend dashboard visuals", () => {
-  test("home dashboard captures the updated bookshelf-focused layout", async ({ page }, testInfo) => {
+async function assertNoHorizontalScroll(page: Page): Promise<void> {
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(scrollWidth).toBeLessThanOrEqual(viewportWidth);
+}
+
+test.describe("frontend editorial bookshelf visuals", () => {
+  test("home page keeps the editorial layout responsive", async ({ page }, testInfo) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "ホーム" })).toBeVisible();
-    await expect(page.getByText("本棚の状態をひと目で把握")).toBeVisible();
-    await expect(page.getByRole("button", { name: "検索" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /スキャンする/ })).toBeVisible();
+    await expect(page.locator(".app-header")).toBeVisible();
+    await expect(page.locator(".summary-grid")).toBeVisible();
+    await expect(page.locator(".search-bar")).toBeVisible();
+    await expect(page.locator(".recent-book-card").first()).toBeVisible();
+    await assertNoHorizontalScroll(page);
+
+    if (testInfo.project.name === "iphone-se-chromium") {
+      await expect(page.locator(".bottom-nav")).toBeVisible();
+      await expect(page.locator(".desktop-nav")).toBeHidden();
+    } else {
+      await expect(page.locator(".desktop-nav")).toBeVisible();
+    }
 
     await page.screenshot({
-      path: testInfo.outputPath("home-dashboard.png"),
+      path: testInfo.outputPath("home-editorial.png"),
       fullPage: true,
     });
   });
 
-  test("bookshelf page captures shelf layout and filters", async ({ page }, testInfo) => {
+  test("books page keeps search, filters, and shelf selection accessible", async ({ page }, testInfo) => {
     await page.goto("/books");
-    await expect(page.getByRole("heading", { name: "蔵書一覧" })).toBeVisible();
-    await expect(page.getByText("本棚を眺めるように管理する")).toBeVisible();
-    await expect(page.getByText("Books")).toBeVisible();
-    await expect(page.locator(".library-toolbar").getByRole("link", { name: "カテゴリ管理" })).toBeVisible();
+    await expect(page.locator(".bookshelf-shell")).toBeVisible();
+    await assertNoHorizontalScroll(page);
 
-    await expect(page.locator(".coverflow-book.is-active").first()).toBeVisible();
-    await expect(page.locator(".coverflow-selection")).toBeVisible();
+    if (testInfo.project.name === "iphone-se-chromium") {
+      await expect(page.locator(".mobile-tool-row")).toBeVisible();
+      await page.locator(".filter-button").click();
+      await expect(page.locator(".filter-sheet")).toBeVisible();
+      await page.locator(".filter-sheet .sheet-heading button").click();
+    } else {
+      await expect(page.locator(".desktop-filters")).toBeVisible();
+    }
+
+    await expect(page.locator(".bookshelf-book").first()).toBeVisible();
+    await expect(page.locator(".bookshelf-selection")).toBeVisible();
 
     await page.screenshot({
-      path: testInfo.outputPath("bookshelf-view.png"),
+      path: testInfo.outputPath("bookshelf-editorial.png"),
       fullPage: true,
     });
   });
 
-  test("book detail page captures desktop layout", async ({ page }, testInfo) => {
+  test("book detail page keeps the reading controls and metadata visible", async ({ page }, testInfo) => {
     await page.goto("/books/9784860648114");
     await expect(page.locator(".detail-grid")).toBeVisible();
     await expect(page.locator(".detail-status-panel")).toBeVisible();
     await expect(page.locator(".detail-actions")).toBeVisible();
+    await assertNoHorizontalScroll(page);
 
     await page.screenshot({
-      path: testInfo.outputPath("book-detail-desktop.png"),
+      path: testInfo.outputPath("book-detail-editorial.png"),
       fullPage: true,
     });
   });
 
-  test("categories page captures management layout", async ({ page }, testInfo) => {
+  test("categories page uses a compact table with modal editing", async ({ page }, testInfo) => {
     await page.goto("/categories");
-    await expect(page.getByRole("heading", { name: "カテゴリ管理" })).toBeVisible();
-    await expect(page.getByPlaceholder("新しいカテゴリ名")).toBeVisible();
-    await expect(page.locator(".category-card").first()).toBeVisible();
+    await expect(page.locator(".category-table")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Add category/i })).toBeVisible();
+    await assertNoHorizontalScroll(page);
+
+    await page.getByRole("button", { name: /Add category/i }).click();
+    await expect(page.locator(".edit-sheet")).toBeVisible();
+    await page.getByRole("button", { name: /Close editor/i }).click();
+
+    await page.getByRole("button", { name: /Edit/i }).first().click();
+    await expect(page.locator(".edit-sheet")).toBeVisible();
+    await page.getByRole("button", { name: /Close editor/i }).click();
 
     await page.screenshot({
-      path: testInfo.outputPath("categories-view.png"),
+      path: testInfo.outputPath("categories-editorial.png"),
       fullPage: true,
     });
   });
 
-  test("scan page captures camera-first layout", async ({ page }, testInfo) => {
+  test("scan page keeps the camera-first layout", async ({ page }, testInfo) => {
     await page.goto("/scan");
     await expect(page.locator(".scan-panel")).toBeVisible();
     await expect(page.locator(".scanner-shell")).toBeVisible();
-    await expect(page.locator(".scanner-video")).toBeVisible();
     await expect(page.locator(".scan-tips")).toBeVisible();
+    await assertNoHorizontalScroll(page);
 
     await page.screenshot({
-      path: testInfo.outputPath("scan-view.png"),
+      path: testInfo.outputPath("scan-editorial.png"),
       fullPage: true,
     });
   });

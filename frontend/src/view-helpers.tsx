@@ -42,7 +42,12 @@ export function SearchBar({
       }}
     >
       <SearchIcon />
-      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} aria-label={placeholder} />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        aria-label={placeholder}
+      />
       <button type="submit" className="inline-search-action">
         {submitLabel}
       </button>
@@ -62,8 +67,8 @@ export function RecentBookCard({ book }: { book: Book }) {
           <TagChip tone="outline">{book.bookFormat}</TagChip>
           <TagChip>{book.readingStatus}</TagChip>
         </div>
-        <h4 title={book.title}>{book.title || "タイトル未設定"}</h4>
-        <p className="author-line">{book.author || "著者情報なし"}</p>
+        <h4 title={book.title}>{book.title || "Untitled"}</h4>
+        <p className="author-line">{book.author || "Unknown author"}</p>
         <p className="subtle">{formatDate(book.createdAt)}</p>
       </div>
     </Link>
@@ -74,7 +79,7 @@ export function FloatingScanButton() {
   return (
     <Link to="/scan" className="fab-scan">
       <ScanIcon />
-      <span>スキャンする</span>
+      <span>Scan</span>
     </Link>
   );
 }
@@ -99,7 +104,7 @@ export function CoverArt({
       <img
         className={`cover-art ${large ? "large" : ""} ${className}`.trim()}
         src={book.coverImageUrl}
-        alt={book.title || "書影"}
+        alt={book.title || "Book cover"}
         loading="lazy"
         onError={() => setImageFailed(true)}
       />
@@ -107,7 +112,10 @@ export function CoverArt({
   }
 
   return (
-    <div className={`cover-fallback ${large ? "large" : ""} ${className}`.trim()} style={{ background: coverAccent(book.isbn) }}>
+    <div
+      className={`cover-fallback ${large ? "large" : ""} ${className}`.trim()}
+      style={{ background: coverAccent(book.isbn) }}
+    >
       <span>{book.title ? book.title.slice(0, 24) : "NO IMAGE"}</span>
     </div>
   );
@@ -120,7 +128,10 @@ export function TagChip({ children, tone = "solid" }: { children: ReactNode; ton
 export function SearchIcon() {
   return (
     <svg className="icon search-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M10.5 4a6.5 6.5 0 1 0 4.1 11.54l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" fill="currentColor" />
+      <path
+        d="M10.5 4a6.5 6.5 0 1 0 4.1 11.54l4.43 4.43 1.41-1.41-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -128,7 +139,10 @@ export function SearchIcon() {
 export function ScanIcon() {
   return (
     <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 7a3 3 0 0 1 3-3h2v2H7a1 1 0 0 0-1 1v2H4V7Zm13-3h-2v2h2a1 1 0 0 1 1 1v2h2V7a3 3 0 0 0-3-3ZM6 15H4v2a3 3 0 0 0 3 3h2v-2H7a1 1 0 0 1-1-1v-2Zm14 0h-2v2a1 1 0 0 1-1 1h-2v2h2a3 3 0 0 0 3-3v-2ZM7 10h2v4H7v-4Zm4-1h2v6h-2V9Zm4 1h2v4h-2v-4Z" fill="currentColor" />
+      <path
+        d="M4 7a3 3 0 0 1 3-3h2v2H7a1 1 0 0 0-1 1v2H4V7Zm13-3h-2v2h2a1 1 0 0 1 1 1v2h2V7a3 3 0 0 0-3-3ZM6 15H4v2a3 3 0 0 0 3 3h2v-2H7a1 1 0 0 1-1-1v-2Zm14 0h-2v2a1 1 0 0 1-1 1h-2v2h2a3 3 0 0 0 3-3v-2ZM7 10h2v4H7v-4Zm4-1h2v6h-2V9Zm4 1h2v4h-2v-4Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -138,6 +152,7 @@ export function formatDate(value: string): string {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
+
   return date.toISOString().slice(0, 10);
 }
 
@@ -152,6 +167,7 @@ export function sortBooks<T extends Pick<Book, "createdAt" | "title" | "author">
     if (sort === "author") return left.author.localeCompare(right.author, "ja");
     return right.createdAt.localeCompare(left.createdAt);
   });
+
   return next;
 }
 
@@ -163,12 +179,13 @@ export function isInCurrentMonth(value: string): boolean {
 
 function coverAccent(seed: string): string {
   const palettes = [
-    "linear-gradient(180deg, #2aa3a7 0%, #14656e 100%)",
-    "linear-gradient(180deg, #81c7d4 0%, #4f95ab 100%)",
-    "linear-gradient(180deg, #f2c66c 0%, #d38e31 100%)",
-    "linear-gradient(180deg, #7fc0a9 0%, #4e8873 100%)",
-    "linear-gradient(180deg, #9eb7df 0%, #607fa9 100%)",
+    "linear-gradient(180deg, #21416b 0%, #0f3143 100%)",
+    "linear-gradient(180deg, #0f5f67 0%, #143d4d 100%)",
+    "linear-gradient(180deg, #a77739 0%, #6b4825 100%)",
+    "linear-gradient(180deg, #5d7c8d 0%, #274355 100%)",
+    "linear-gradient(180deg, #6a4f67 0%, #3a2b42 100%)",
   ];
   const total = [...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
   return palettes[total % palettes.length];
 }

@@ -1,457 +1,73 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
-} from "react";
 import { Link } from "react-router-dom";
 import type { Book } from "../types";
+import { CoverArt, TagChip } from "../view-helpers";
 
 type CoverFlowShelfProps = {
   books: Book[];
   activeIndex: number;
   onActiveIndexChange: (index: number) => void;
+  layout?: "grid" | "list";
 };
-
-type CoverFlowPresentation = {
-  rotation: number;
-  translateX: number;
-  translateZ: number;
-  opacity: number;
-  zIndex: number;
-  mode: "cover" | "spine";
-};
-
-const RAIL_ITEM_WIDTH = 220;
-const MOBILE_RAIL_ITEM_WIDTH = 172;
-const MAX_VISIBLE_OFFSET = 5;
-const MOBILE_BREAKPOINT = 720;
-const POINTER_DRAG_THRESHOLD = 6;
-const TOUCH_DRAG_THRESHOLD = 14;
-const AXIS_LOCK_THRESHOLD = 10;
-const HORIZONTAL_LOCK_RATIO = 1.2;
-const TOUCH_DRAG_MULTIPLIER = 1.65;
 
 export function CoverFlowShelf({
   books,
   activeIndex,
   onActiveIndexChange,
+  layout = "grid",
 }: CoverFlowShelfProps) {
-  const railRef = useRef<HTMLDivElement | null>(null);
-  const railItemRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const dragStateRef = useRef({
-    pointerId: -1,
-    startX: 0,
-    startY: 0,
-    startScrollLeft: 0,
-    startIndex: 0,
-    suppressClick: false,
-    axisLock: null as "x" | "y" | null,
-    pointerType: "mouse",
-    dragMultiplier: 1,
-    hasPointerCapture: false,
-  });
-  const [isDragging, setIsDragging] = useState(false);
-  const [viewportWidth, setViewportWidth] = useState(() =>
-    typeof window === "undefined" ? 1280 : window.innerWidth,
-  );
-
-  useEffect(() => {
-    railItemRefs.current = railItemRefs.current.slice(0, books.length);
-  }, [books.length]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const handleResize = (): void => {
-      setViewportWidth(window.innerWidth);
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
-  const isTouchViewport = viewportWidth < MOBILE_BREAKPOINT;
-  const railItemWidth = isTouchViewport ? MOBILE_RAIL_ITEM_WIDTH : RAIL_ITEM_WIDTH;
-
-  const visibleBooks = useMemo(
-    () =>
-      books
-        .map((book, index) => ({ book, index, offset: index - activeIndex }))
-        .filter(({ offset }) => Math.abs(offset) <= MAX_VISIBLE_OFFSET),
-    [books, activeIndex],
-  );
-
-  const layeredBooks = useMemo(
-    () =>
-      [...visibleBooks].sort((left, right) => {
-        const leftPresentation = getPresentation(left.offset);
-        const rightPresentation = getPresentation(right.offset);
-        return leftPresentation.zIndex - rightPresentation.zIndex;
-      }),
-    [visibleBooks],
-  );
-
-  const getClosestIndexFromRail = (): number => {
-    const rail = railRef.current;
-    if (!rail || books.length === 0) {
-      return 0;
-    }
-
-    const viewportCenter = rail.scrollLeft + rail.clientWidth / 2;
-    let closestIndex = 0;
-    let closestDistance = Number.POSITIVE_INFINITY;
-
-    railItemRefs.current.forEach((item, index) => {
-      if (!item) {
-        return;
-      }
-
-      const center = item.offsetLeft + item.offsetWidth / 2;
-      const distance = Math.abs(center - viewportCenter);
-
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
-
-    return closestIndex;
-  };
-
-  const updateActiveFromScroll = (): void => {
-    const closestIndex = getClosestIndexFromRail();
-    if (closestIndex !== activeIndex) {
-      onActiveIndexChange(closestIndex);
-    }
-  };
-
-  const clampIndex = (index: number): number => {
-    if (books.length === 0) {
-      return 0;
-    }
-    return Math.max(0, Math.min(index, books.length - 1));
-  };
-
-  const scrollToIndex = (index: number, behavior: ScrollBehavior = "smooth"): void => {
-    const item = railItemRefs.current[clampIndex(index)];
-    if (!item) {
-      return;
-    }
-
-    item.scrollIntoView({
-      behavior,
-      inline: "center",
-      block: "nearest",
-    });
-  };
-
-  const focusIndex = (index: number): void => {
-    if (dragStateRef.current.suppressClick) {
-      dragStateRef.current.suppressClick = false;
-      return;
-    }
-
-    onActiveIndexChange(index);
-    scrollToIndex(index);
-  };
-
-  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    const rail = railRef.current;
-    if (!rail) {
-      return;
-    }
-
-    const isTouchInput = event.pointerType === "touch" || isTouchViewport;
-
-    dragStateRef.current.pointerId = event.pointerId;
-    dragStateRef.current.startX = event.clientX;
-    dragStateRef.current.startY = event.clientY;
-    dragStateRef.current.startScrollLeft = rail.scrollLeft;
-    dragStateRef.current.startIndex = activeIndex;
-    dragStateRef.current.suppressClick = false;
-    dragStateRef.current.axisLock = null;
-    dragStateRef.current.pointerType = event.pointerType;
-    dragStateRef.current.dragMultiplier = isTouchInput ? TOUCH_DRAG_MULTIPLIER : 1;
-    dragStateRef.current.hasPointerCapture = false;
-    setIsDragging(false);
-  };
-
-  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    const rail = railRef.current;
-    if (!rail || dragStateRef.current.pointerId !== event.pointerId) {
-      return;
-    }
-
-    const deltaX = event.clientX - dragStateRef.current.startX;
-    const deltaY = event.clientY - dragStateRef.current.startY;
-    const absoluteX = Math.abs(deltaX);
-    const absoluteY = Math.abs(deltaY);
-    const dragThreshold =
-      dragStateRef.current.pointerType === "touch" || isTouchViewport
-        ? TOUCH_DRAG_THRESHOLD
-        : POINTER_DRAG_THRESHOLD;
-
-    if (
-      dragStateRef.current.axisLock === null &&
-      (absoluteX > AXIS_LOCK_THRESHOLD || absoluteY > AXIS_LOCK_THRESHOLD)
-    ) {
-      dragStateRef.current.axisLock =
-        absoluteX > absoluteY * HORIZONTAL_LOCK_RATIO ? "x" : "y";
-    }
-
-    if (dragStateRef.current.axisLock === "y") {
-      return;
-    }
-
-    if (
-      dragStateRef.current.axisLock === "x" &&
-      !dragStateRef.current.hasPointerCapture
-    ) {
-      event.currentTarget.setPointerCapture(event.pointerId);
-      dragStateRef.current.hasPointerCapture = true;
-    }
-
-    if (absoluteX > dragThreshold) {
-      setIsDragging(true);
-      dragStateRef.current.suppressClick = true;
-    }
-
-    rail.scrollLeft =
-      dragStateRef.current.startScrollLeft -
-      deltaX * dragStateRef.current.dragMultiplier;
-    updateActiveFromScroll();
-  };
-
-  const finishDrag = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    if (dragStateRef.current.pointerId !== event.pointerId) {
-      return;
-    }
-
-    const nearestIndex = getClosestIndexFromRail();
-    onActiveIndexChange(nearestIndex);
-    scrollToIndex(nearestIndex);
-
-    dragStateRef.current.pointerId = -1;
-    if (dragStateRef.current.hasPointerCapture) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    dragStateRef.current.hasPointerCapture = false;
-    window.setTimeout(() => {
-      dragStateRef.current.suppressClick = false;
-    }, 0);
-    setIsDragging(false);
-  };
-
-  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>): void => {
-    const rail = railRef.current;
-    if (!rail) {
-      return;
-    }
-
-    const delta =
-      Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-
-    if (delta === 0) {
-      return;
-    }
-
-    rail.scrollLeft += delta;
-    event.preventDefault();
-  };
-
-  const selectedBook = books[activeIndex] ?? null;
+  const selectedBook = books[activeIndex] ?? books[0] ?? null;
 
   return (
-    <section className="coverflow-shell">
-      <div
-        className={`coverflow-stage-wrap ${isDragging ? "is-dragging" : ""}`}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
-        onWheel={handleWheel}
-      >
-        <div
-          className="coverflow-visual-stage"
-          role="region"
-          aria-label="蔵書を選択"
-        >
-          {layeredBooks.map(({ book, index, offset }) => {
-            const presentation = getPresentation(offset);
-            const origin =
-              offset < 0 ? "right center" : offset > 0 ? "left center" : "center center";
-
-            return (
-              <button
-                key={book.isbn}
-                type="button"
-                className={`coverflow-book is-${presentation.mode} ${index === activeIndex ? "is-active" : ""}`}
-                style={
-                  {
-                    transform: `translateX(-50%) translateX(${presentation.translateX}px) translateZ(${presentation.translateZ}px) rotateY(${presentation.rotation}deg)`,
-                    transformOrigin: origin,
-                    opacity: presentation.opacity,
-                    zIndex: presentation.zIndex,
-                  } as CSSProperties
-                }
-                onClick={() => focusIndex(index)}
-                aria-pressed={index === activeIndex}
-                aria-label={`${book.title} を選択`}
-              >
-                <div className="coverflow-book-inner">
-                  {presentation.mode === "spine" ? (
-                    <BookSpine book={book} />
-                  ) : (
-                    <BookSurface book={book} />
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div ref={railRef} className="coverflow-rail" onScroll={updateActiveFromScroll} aria-hidden="true">
-          {books.map((book, index) => (
-            <div
-              key={book.isbn}
-              ref={(node) => {
-                railItemRefs.current[index] = node;
-              }}
-              className="coverflow-rail-stop"
-              style={{ width: `${railItemWidth}px` }}
-            />
-          ))}
-        </div>
+    <section className="bookshelf-shell">
+      <div className={`bookshelf-grid ${layout === "list" ? "list-view" : ""}`}>
+        {books.map((book, index) => (
+          <button
+            key={book.isbn}
+            type="button"
+            className={`bookshelf-book ${index === activeIndex ? "is-selected" : ""}`}
+            onClick={() => onActiveIndexChange(index)}
+            aria-pressed={index === activeIndex}
+            aria-label={`${book.title} select`}
+          >
+            <CoverArt book={book} className="bookshelf-cover" />
+            <div className="bookshelf-copy">
+              <div className="chip-row">
+                <TagChip>{book.readingStatus}</TagChip>
+                <TagChip tone="outline">{book.bookFormat}</TagChip>
+              </div>
+              <h4>{book.title || "Untitled"}</h4>
+              <p>{book.author || "Unknown author"}</p>
+              <small>{book.categoryName}</small>
+            </div>
+          </button>
+        ))}
       </div>
 
       {selectedBook ? (
-        <div className="coverflow-selection">
-          <p className="section-label">選択中の本</p>
-          <div className="coverflow-selection-main">
+        <div className="bookshelf-selection">
+          <div className="section-heading">
             <div>
+              <p className="section-label">Selected book</p>
               <h3>{selectedBook.title}</h3>
-              <p>{selectedBook.author || "著者情報なし"}</p>
             </div>
-            <div className="chip-row">
-              <span className="tag-chip">{selectedBook.readingStatus}</span>
-              <span className="tag-chip is-outline">{selectedBook.categoryName}</span>
-              <span className="tag-chip is-outline">{selectedBook.bookFormat}</span>
+            <Link to={`/books/${selectedBook.isbn}`} className="text-link">
+              Open detail
+            </Link>
+          </div>
+          <div className="bookshelf-selection-main">
+            <CoverArt book={selectedBook} large />
+            <div className="bookshelf-selection-copy">
+              <div className="chip-row">
+                <TagChip>{selectedBook.categoryName}</TagChip>
+                <TagChip tone="outline">{selectedBook.bookFormat}</TagChip>
+                <TagChip>{selectedBook.readingStatus}</TagChip>
+              </div>
+              <p className="subtle">{selectedBook.author || "Unknown author"}</p>
+              <p>{selectedBook.publisher || "-"}</p>
             </div>
           </div>
-          <Link to={`/books/${selectedBook.isbn}`} className="ghost-link coverflow-detail-link">
-            詳細を見る
-          </Link>
         </div>
       ) : null}
-
-      <div className="coverflow-plank" aria-hidden="true" />
     </section>
   );
-}
-
-function getPresentation(delta: number): CoverFlowPresentation {
-  const direction = delta === 0 ? 0 : delta > 0 ? 1 : -1;
-  const distance = Math.abs(delta);
-
-  if (distance === 0) {
-    return {
-      rotation: 0,
-      translateX: 0,
-      translateZ: 0,
-      opacity: 1,
-      zIndex: 70,
-      mode: "cover",
-    };
-  }
-
-  if (distance === 1) {
-    return {
-      rotation: -46 * direction,
-      translateX: 168 * direction,
-      translateZ: -80,
-      opacity: 0.94,
-      zIndex: 56,
-      mode: "cover",
-    };
-  }
-
-  if (distance === 2) {
-    return {
-      rotation: -72 * direction,
-      translateX: 292 * direction,
-      translateZ: -150,
-      opacity: 0.82,
-      zIndex: 42,
-      mode: "cover",
-    };
-  }
-
-  return {
-    rotation: -86 * direction,
-    translateX: (392 + (distance - 3) * 34) * direction,
-    translateZ: -220 - (distance - 3) * 24,
-    opacity: Math.max(0.36, 0.56 - (distance - 3) * 0.06),
-    zIndex: 24 - distance,
-    mode: "spine",
-  };
-}
-
-function BookSurface({ book }: { book: Book }) {
-  const [imageFailed, setImageFailed] = useState(false);
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [book.coverImageUrl, book.isbn]);
-
-  if (book.coverImageUrl && !imageFailed) {
-    return (
-      <div className="coverflow-cover-shell">
-        <img
-          className="coverflow-cover-image"
-          src={book.coverImageUrl}
-          alt={book.title || "書影"}
-          loading="lazy"
-          onError={() => setImageFailed(true)}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="coverflow-cover-shell coverflow-cover-fallback"
-      style={{ background: coverFlowAccent(book.isbn) }}
-    >
-      <span>{book.title || "NO IMAGE"}</span>
-    </div>
-  );
-}
-
-function BookSpine({ book }: { book: Book }) {
-  return (
-    <div className="coverflow-spine-face" style={{ background: coverFlowAccent(book.isbn) }}>
-      <span className="coverflow-spine-title">{book.title || "タイトル未設定"}</span>
-      <span className="coverflow-spine-author">{book.author || "著者未設定"}</span>
-    </div>
-  );
-}
-
-function coverFlowAccent(seed: string): string {
-  const palettes = [
-    "linear-gradient(180deg, #2aa3a7 0%, #14656e 100%)",
-    "linear-gradient(180deg, #81c7d4 0%, #4f95ab 100%)",
-    "linear-gradient(180deg, #f2c66c 0%, #d38e31 100%)",
-    "linear-gradient(180deg, #7fc0a9 0%, #4e8873 100%)",
-    "linear-gradient(180deg, #9eb7df 0%, #607fa9 100%)",
-  ];
-  const score = [...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return palettes[score % palettes.length];
 }

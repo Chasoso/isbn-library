@@ -1,8 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { handleSignInCallback, signIn, signOut, userManager } from "./lib/auth";
 import type { AuthState } from "./types";
-import { FloatingScanButton } from "./view-helpers";
 
 export function ProtectedLayout({
   authState,
@@ -16,13 +15,13 @@ export function ProtectedLayout({
       <div className="app-shell auth-screen">
         <div className="auth-card">
           <p className="kicker">ISBN LIBRARY</p>
-          <h1>蔵書ダッシュボードへログイン</h1>
+          <h1>Sign in to your shelf</h1>
           <p className="auth-copy">
-            このアプリは認証済みユーザーのみ利用できます。管理者が作成した
-            Cognito ユーザーでログインしてください。
+            This app is available to authenticated users only. Sign in with
+            Cognito to continue.
           </p>
-          <button className="primary-pill" onClick={() => void signIn()}>
-            ログイン
+          <button className="primary-button full" onClick={() => void signIn()}>
+            Sign in
           </button>
         </div>
       </div>
@@ -42,29 +41,146 @@ export function AppLayout({
   children: ReactNode;
 }) {
   const location = useLocation();
-  const hideFab = location.pathname === "/scan";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [accountLabel, setAccountLabel] = useState("Menu");
+  const [accountDetail, setAccountDetail] = useState<string | null>(null);
+  const [accountInitials, setAccountInitials] = useState("U");
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadUser = async (): Promise<void> => {
+      const user = await userManager.getUser();
+      if (!mounted) {
+        return;
+      }
+
+      const name = user?.profile.name?.toString().trim() ?? "";
+      const email = user?.profile.email?.toString().trim() ?? "";
+      const label = name || email || "Menu";
+      const initials = label
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? "")
+        .join("")
+        .slice(0, 2);
+
+      setAccountLabel(label);
+      setAccountDetail(email || name || null);
+      setAccountInitials(initials || "U");
+    };
+
+    void loadUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
 
   return (
-    <div className="app-shell">
-      <div className="ambient ambient-left" aria-hidden="true" />
-      <div className="ambient ambient-right" aria-hidden="true" />
+    <div className="app-shell editorial-shell">
       <header className="app-header">
         <div className="brand-block">
-          <p className="kicker">ISBN DUPLICATE CHECK</p>
-          <h1>{title}</h1>
-          {subtitle ? <p className="subtle">{subtitle}</p> : null}
+          <Link to="/" className="brand-wordmark" aria-label="ISBN Library home">
+            ISBN LIBRARY
+          </Link>
+          <div className="brand-copy">
+            <p className="kicker">EDITED SHELF</p>
+            <h1>{title}</h1>
+            {subtitle ? <p className="subtle">{subtitle}</p> : null}
+          </div>
         </div>
-        <nav className="nav-tabs" aria-label="メインメニュー">
-          <NavLink to="/">ホーム</NavLink>
-          <NavLink to="/books">蔵書一覧</NavLink>
-          <NavLink to="/categories">カテゴリ管理</NavLink>
-          <button className="ghost-link" onClick={() => void signOut()}>
-            ログアウト
+
+        <div className="header-actions">
+          <nav className="nav-tabs desktop-nav" aria-label="Main navigation">
+            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
+              Home
+            </NavLink>
+            <NavLink to="/books" className={({ isActive }) => (isActive ? "active" : "")}>
+              Books
+            </NavLink>
+            <NavLink to="/categories" className={({ isActive }) => (isActive ? "active" : "")}>
+              Categories
+            </NavLink>
+          </nav>
+          <button
+            className="user-menu-trigger"
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={menuOpen}
+            aria-controls="account-menu"
+          >
+            <span className="user-avatar" aria-hidden="true">
+              {accountInitials}
+            </span>
+            <span className="user-menu-copy">
+              <small>ACCOUNT</small>
+              <strong>{accountLabel}</strong>
+            </span>
           </button>
-        </nav>
+        </div>
       </header>
+
       <main className="page-content">{children}</main>
-      {!hideFab ? <FloatingScanButton /> : null}
+
+      <nav className="bottom-nav" aria-label="Mobile navigation">
+        <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
+          Home
+        </NavLink>
+        <NavLink to="/books" className={({ isActive }) => (isActive ? "active" : "")}>
+          Books
+        </NavLink>
+        <NavLink
+          to="/scan"
+          className={({ isActive }) => (isActive ? "active bottom-nav-scan" : "bottom-nav-scan")}
+        >
+          Scan
+        </NavLink>
+        <NavLink to="/categories" className={({ isActive }) => (isActive ? "active" : "")}>
+          Categories
+        </NavLink>
+      </nav>
+
+      {menuOpen ? (
+        <div className="modal-backdrop shell-menu-backdrop" onMouseDown={() => setMenuOpen(false)}>
+          <section
+            id="account-menu"
+            className="menu-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="account-menu-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="sheet-heading">
+              <div>
+                <p className="eyebrow">ACCOUNT</p>
+                <h2 id="account-menu-title">User menu</h2>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Close account menu"
+              >
+                ×
+              </button>
+            </div>
+            <div className="menu-meta">
+              <strong>{accountLabel}</strong>
+              {accountDetail ? <p>{accountDetail}</p> : null}
+            </div>
+            <button type="button" className="primary-button full" onClick={() => void signOut()}>
+              Logout
+            </button>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -91,19 +207,31 @@ export function AuthCallbackPage({
         });
         navigate("/", { replace: true });
       } catch {
-        setError("ログインコールバックの処理に失敗しました。");
+        setError("Sign-in callback failed.");
       }
     };
 
     void complete();
   }, [navigate, onLoaded]);
 
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      window.location.replace("/");
+    }, 2400);
+
+    return () => window.clearTimeout(timer);
+  }, [error]);
+
   return (
     <div className="app-shell loading-screen">
       <div className="loading-panel">
         <p className="kicker">COGNITO CALLBACK</p>
-        <h1>ログインを完了しています</h1>
-        <p className="subtle">{error ?? "認証情報を確認しています。少しだけお待ちください。"}</p>
+        <h1>Checking your sign-in</h1>
+        <p className="subtle">{error ?? "Please wait while we complete authentication."}</p>
       </div>
     </div>
   );
