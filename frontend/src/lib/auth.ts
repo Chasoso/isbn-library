@@ -13,7 +13,7 @@ const demoUser = {
   access_token: "demo-access-token",
   profile: {
     email: "demo@example.com",
-    name: "Chassso",
+    name: "デモユーザー",
   },
 } as User;
 

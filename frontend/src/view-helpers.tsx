@@ -67,8 +67,8 @@ export function RecentBookCard({ book }: { book: Book }) {
           <TagChip tone="outline">{book.bookFormat}</TagChip>
           <TagChip>{book.readingStatus}</TagChip>
         </div>
-        <h4 title={book.title}>{book.title || "Untitled"}</h4>
-        <p className="author-line">{book.author || "Unknown author"}</p>
+        <h4 title={book.title}>{book.title || "無題"}</h4>
+        <p className="author-line">{book.author || "著者未設定"}</p>
         <p className="subtle">{formatDate(book.createdAt)}</p>
       </div>
     </Link>
@@ -79,7 +79,7 @@ export function FloatingScanButton() {
   return (
     <Link to="/scan" className="fab-scan">
       <ScanIcon />
-      <span>Scan</span>
+      <span>スキャン</span>
     </Link>
   );
 }
@@ -116,7 +116,7 @@ export function CoverArt({
       className={`cover-fallback ${large ? "large" : ""} ${className}`.trim()}
       style={{ background: coverAccent(book.isbn) }}
     >
-      <span>{book.title ? book.title.slice(0, 24) : "NO IMAGE"}</span>
+      <span>{book.title ? book.title.slice(0, 24) : "表紙なし"}</span>
     </div>
   );
 }
@@ -179,11 +179,11 @@ export function isInCurrentMonth(value: string): boolean {
 
 function coverAccent(seed: string): string {
   const palettes = [
-    "linear-gradient(180deg, #21416b 0%, #0f3143 100%)",
-    "linear-gradient(180deg, #0f5f67 0%, #143d4d 100%)",
-    "linear-gradient(180deg, #a77739 0%, #6b4825 100%)",
-    "linear-gradient(180deg, #5d7c8d 0%, #274355 100%)",
-    "linear-gradient(180deg, #6a4f67 0%, #3a2b42 100%)",
+    "#234b60",
+    "#15606a",
+    "#9f7640",
+    "#5f7f8d",
+    "#75606d",
   ];
   const total = [...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0);
 

@@ -28,9 +28,9 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
           setNotFound(true);
-          setMessage("対象の書籍は登録されていません。");
+          setMessage("この書籍は見つかりませんでした。");
         } else {
-          setMessage("書籍情報の取得に失敗しました。");
+          setMessage("書籍情報の読み込みに失敗しました。");
         }
       } finally {
         setLoading(false);
@@ -41,7 +41,7 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
   }, [accessToken, isbn]);
 
   const handleDelete = async (): Promise<void> => {
-    if (!window.confirm("この書籍を蔵書から削除しますか？")) {
+    if (!window.confirm("この書籍を削除しますか？")) {
       return;
     }
 
@@ -71,19 +71,21 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <AppLayout title="書籍詳細" subtitle={book?.title ?? "書籍の詳細を確認"}>
+    <AppLayout title="書籍詳細" subtitle={book?.title ?? "選択した本の詳細を確認します"}>
       <section className="panel detail-panel">
         {loading ? <p className="empty-copy">書籍情報を読み込み中です...</p> : null}
         {message ? <p className="subtle">{message}</p> : null}
         {notFound ? (
           <p>
-            <Link className="text-link" to="/books">蔵書一覧へ戻る</Link>
+            <Link className="text-link" to="/books">
+              蔵書一覧へ戻る
+            </Link>
           </p>
         ) : null}
         {book ? (
           <>
             <div className="detail-grid">
-              <CoverArt book={book} large />
+              <CoverArt book={book} large className="detail-cover" />
               <div className="detail-copy">
                 <div className="chip-row">
                   <TagChip>{book.categoryName}</TagChip>
@@ -91,14 +93,35 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
                   <TagChip>{book.readingStatus}</TagChip>
                 </div>
                 <h2>{book.title}</h2>
-                <p><strong>著者:</strong> {book.author || "-"}</p>
-                <p><strong>出版社:</strong> {book.publisher || "-"}</p>
-                <p><strong>発売日:</strong> {book.publishedDate || "-"}</p>
-                <p><strong>ISBN:</strong> {book.isbn}</p>
-                <p><strong>読書ステータス:</strong> {book.readingStatus}</p>
-                <p><strong>登録日:</strong> {formatDate(book.createdAt)}</p>
+                <dl className="detail-meta-list">
+                  <div>
+                    <dt>著者</dt>
+                    <dd>{book.author || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>出版社</dt>
+                    <dd>{book.publisher || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>発売日</dt>
+                    <dd>{book.publishedDate || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>ISBN</dt>
+                    <dd>{book.isbn}</dd>
+                  </div>
+                  <div>
+                    <dt>読書ステータス</dt>
+                    <dd>{book.readingStatus}</dd>
+                  </div>
+                  <div>
+                    <dt>登録日</dt>
+                    <dd>{formatDate(book.createdAt)}</dd>
+                  </div>
+                </dl>
               </div>
             </div>
+
             <div className="detail-status-panel">
               <div className="classification-grid detail-status-grid">
                 <label>
@@ -117,10 +140,14 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
                 </label>
               </div>
               <div className="detail-actions">
-                <button className="primary-pill" onClick={() => void handleUpdateReadingStatus()} disabled={savingStatus}>
+                <button
+                  className="primary-button"
+                  onClick={() => void handleUpdateReadingStatus()}
+                  disabled={savingStatus}
+                >
                   {savingStatus ? "保存中..." : "ステータスを保存"}
                 </button>
-                <button className="danger-pill" onClick={() => void handleDelete()}>
+                <button className="ghost-button danger-button" onClick={() => void handleDelete()}>
                   削除する
                 </button>
               </div>

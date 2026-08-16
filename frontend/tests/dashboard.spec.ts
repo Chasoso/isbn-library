@@ -28,7 +28,7 @@ test.describe("frontend editorial bookshelf visuals", () => {
     });
   });
 
-  test("books page keeps search, filters, and shelf selection accessible", async ({ page }, testInfo) => {
+  test("books page keeps search and filters accessible", async ({ page }, testInfo) => {
     await page.goto("/books");
     await expect(page.locator(".bookshelf-shell")).toBeVisible();
     await assertNoHorizontalScroll(page);
@@ -43,7 +43,7 @@ test.describe("frontend editorial bookshelf visuals", () => {
     }
 
     await expect(page.locator(".bookshelf-book").first()).toBeVisible();
-    await expect(page.locator(".bookshelf-selection")).toBeVisible();
+    await expect(page.locator(".bookshelf-selection")).toHaveCount(0);
 
     await page.screenshot({
       path: testInfo.outputPath("bookshelf-editorial.png"),
@@ -67,16 +67,16 @@ test.describe("frontend editorial bookshelf visuals", () => {
   test("categories page uses a compact table with modal editing", async ({ page }, testInfo) => {
     await page.goto("/categories");
     await expect(page.locator(".category-table")).toBeVisible();
-    await expect(page.getByRole("button", { name: /Add category/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: "＋ 追加" })).toBeVisible();
     await assertNoHorizontalScroll(page);
 
-    await page.getByRole("button", { name: /Add category/i }).click();
+    await page.getByRole("button", { name: "＋ 追加" }).click();
     await expect(page.locator(".edit-sheet")).toBeVisible();
-    await page.getByRole("button", { name: /Close editor/i }).click();
+    await page.getByRole("button", { name: "閉じる" }).click();
 
-    await page.getByRole("button", { name: /Edit/i }).first().click();
+    await page.getByRole("button", { name: /を編集$/ }).first().click();
     await expect(page.locator(".edit-sheet")).toBeVisible();
-    await page.getByRole("button", { name: /Close editor/i }).click();
+    await page.getByRole("button", { name: "閉じる" }).click();
 
     await page.screenshot({
       path: testInfo.outputPath("categories-editorial.png"),
@@ -89,6 +89,7 @@ test.describe("frontend editorial bookshelf visuals", () => {
     await expect(page.locator(".scan-panel")).toBeVisible();
     await expect(page.locator(".scanner-shell")).toBeVisible();
     await expect(page.locator(".scan-tips")).toBeVisible();
+    await expect(page.locator(".scan-manual")).toBeVisible();
     await assertNoHorizontalScroll(page);
 
     await page.screenshot({

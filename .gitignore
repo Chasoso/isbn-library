@@ -3,6 +3,8 @@ frontend/dist/
 frontend/.env
 frontend/playwright-report/
 frontend/test-results/
+frontend/local-screenshots/
+artifacts/
 infrastructure/.venv/
 infrastructure/cdk.out/
 backend/.coverage

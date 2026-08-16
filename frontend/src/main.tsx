@@ -29,7 +29,7 @@ class AppErrorBoundary extends React.Component<
         <div className="app-shell loading-screen">
           <div className="loading-panel">
             <p className="kicker">ISBN LIBRARY</p>
-            <h1>画面表示中にエラーが発生しました</h1>
+            <h1>画面の表示中にエラーが発生しました</h1>
             <p className="subtle">{this.state.message}</p>
           </div>
         </div>

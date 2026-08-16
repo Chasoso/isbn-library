@@ -1,7 +1,52 @@
-import { type ReactNode, useEffect, useState } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Link, matchPath, useLocation, useNavigate } from "react-router-dom";
 import { handleSignInCallback, signIn, signOut, userManager } from "./lib/auth";
 import type { AuthState } from "./types";
+
+type NavSection = "home" | "books" | "scan" | "categories";
+
+function getActiveSection(pathname: string): NavSection {
+  if (matchPath("/books", pathname) || matchPath("/books/*", pathname) || matchPath("/result/*", pathname)) {
+    return "books";
+  }
+
+  if (matchPath("/scan", pathname)) {
+    return "scan";
+  }
+
+  if (matchPath("/categories/*", pathname) || matchPath("/categories", pathname)) {
+    return "categories";
+  }
+
+  return "home";
+}
+
+function ShellNavItem({
+  to,
+  label,
+  active,
+  mobile = false,
+}: {
+  to: string;
+  label: string;
+  active: boolean;
+  mobile?: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      className={[
+        mobile ? "bottom-nav-item" : "nav-tab",
+        active ? "active" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-current={active ? "page" : undefined}
+    >
+      {label}
+    </Link>
+  );
+}
 
 export function ProtectedLayout({
   authState,
@@ -15,13 +60,12 @@ export function ProtectedLayout({
       <div className="app-shell auth-screen">
         <div className="auth-card">
           <p className="kicker">ISBN LIBRARY</p>
-          <h1>Sign in to your shelf</h1>
+          <h1>サインインして本棚を開く</h1>
           <p className="auth-copy">
-            This app is available to authenticated users only. Sign in with
-            Cognito to continue.
+            Cognito でサインインすると、蔵書の閲覧、登録、検索が使えます。
           </p>
           <button className="primary-button full" onClick={() => void signIn()}>
-            Sign in
+            サインイン
           </button>
         </div>
       </div>
@@ -42,9 +86,11 @@ export function AppLayout({
 }) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [accountLabel, setAccountLabel] = useState("Menu");
+  const [accountLabel, setAccountLabel] = useState("アカウント");
   const [accountDetail, setAccountDetail] = useState<string | null>(null);
   const [accountInitials, setAccountInitials] = useState("U");
+
+  const activeSection = useMemo(() => getActiveSection(location.pathname), [location.pathname]);
 
   useEffect(() => {
     let mounted = true;
@@ -57,7 +103,7 @@ export function AppLayout({
 
       const name = user?.profile.name?.toString().trim() ?? "";
       const email = user?.profile.email?.toString().trim() ?? "";
-      const label = name || email || "Menu";
+      const label = name || email || "アカウント";
       const initials = label
         .split(/\s+/)
         .filter(Boolean)
@@ -97,17 +143,12 @@ export function AppLayout({
         </div>
 
         <div className="header-actions">
-          <nav className="nav-tabs desktop-nav" aria-label="Main navigation">
-            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
-              Home
-            </NavLink>
-            <NavLink to="/books" className={({ isActive }) => (isActive ? "active" : "")}>
-              Books
-            </NavLink>
-            <NavLink to="/categories" className={({ isActive }) => (isActive ? "active" : "")}>
-              Categories
-            </NavLink>
+          <nav className="nav-tabs desktop-nav" aria-label="メインナビゲーション">
+            <ShellNavItem to="/" label="ホーム" active={activeSection === "home"} />
+            <ShellNavItem to="/books" label="蔵書一覧" active={activeSection === "books"} />
+            <ShellNavItem to="/categories" label="カテゴリ管理" active={activeSection === "categories"} />
           </nav>
+
           <button
             className="user-menu-trigger"
             type="button"
@@ -115,6 +156,7 @@ export function AppLayout({
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
             aria-controls="account-menu"
+            aria-label={`アカウント ${accountLabel}`}
           >
             <span className="user-avatar" aria-hidden="true">
               {accountInitials}
@@ -129,22 +171,11 @@ export function AppLayout({
 
       <main className="page-content">{children}</main>
 
-      <nav className="bottom-nav" aria-label="Mobile navigation">
-        <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
-          Home
-        </NavLink>
-        <NavLink to="/books" className={({ isActive }) => (isActive ? "active" : "")}>
-          Books
-        </NavLink>
-        <NavLink
-          to="/scan"
-          className={({ isActive }) => (isActive ? "active bottom-nav-scan" : "bottom-nav-scan")}
-        >
-          Scan
-        </NavLink>
-        <NavLink to="/categories" className={({ isActive }) => (isActive ? "active" : "")}>
-          Categories
-        </NavLink>
+      <nav className="bottom-nav" aria-label="モバイルナビゲーション">
+        <ShellNavItem to="/" label="ホーム" active={activeSection === "home"} mobile />
+        <ShellNavItem to="/books" label="蔵書一覧" active={activeSection === "books"} mobile />
+        <ShellNavItem to="/scan" label="スキャン" active={activeSection === "scan"} mobile />
+        <ShellNavItem to="/categories" label="カテゴリ管理" active={activeSection === "categories"} mobile />
       </nav>
 
       {menuOpen ? (
@@ -160,13 +191,13 @@ export function AppLayout({
             <div className="sheet-heading">
               <div>
                 <p className="eyebrow">ACCOUNT</p>
-                <h2 id="account-menu-title">User menu</h2>
+                <h2 id="account-menu-title">アカウント</h2>
               </div>
               <button
                 type="button"
                 className="icon-button"
                 onClick={() => setMenuOpen(false)}
-                aria-label="Close account menu"
+                aria-label="アカウントメニューを閉じる"
               >
                 ×
               </button>
@@ -176,7 +207,7 @@ export function AppLayout({
               {accountDetail ? <p>{accountDetail}</p> : null}
             </div>
             <button type="button" className="primary-button full" onClick={() => void signOut()}>
-              Logout
+              ログアウト
             </button>
           </section>
         </div>
@@ -207,7 +238,7 @@ export function AuthCallbackPage({
         });
         navigate("/", { replace: true });
       } catch {
-        setError("Sign-in callback failed.");
+        setError("サインインの確認に失敗しました。");
       }
     };
 
@@ -230,8 +261,8 @@ export function AuthCallbackPage({
     <div className="app-shell loading-screen">
       <div className="loading-panel">
         <p className="kicker">COGNITO CALLBACK</p>
-        <h1>Checking your sign-in</h1>
-        <p className="subtle">{error ?? "Please wait while we complete authentication."}</p>
+        <h1>サインインを確認しています</h1>
+        <p className="subtle">{error ?? "認証処理が完了するまでお待ちください。"}</p>
       </div>
     </div>
   );

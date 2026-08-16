@@ -4,30 +4,19 @@ import { CoverArt, TagChip } from "../view-helpers";
 
 type CoverFlowShelfProps = {
   books: Book[];
-  activeIndex: number;
-  onActiveIndexChange: (index: number) => void;
   layout?: "grid" | "list";
 };
 
-export function CoverFlowShelf({
-  books,
-  activeIndex,
-  onActiveIndexChange,
-  layout = "grid",
-}: CoverFlowShelfProps) {
-  const selectedBook = books[activeIndex] ?? books[0] ?? null;
-
+export function CoverFlowShelf({ books, layout = "grid" }: CoverFlowShelfProps) {
   return (
     <section className="bookshelf-shell">
-      <div className={`bookshelf-grid ${layout === "list" ? "list-view" : ""}`}>
-        {books.map((book, index) => (
-          <button
+      <div className={`bookshelf-grid ${layout === "list" ? "list-view" : "grid-view"}`}>
+        {books.map((book) => (
+          <Link
             key={book.isbn}
-            type="button"
-            className={`bookshelf-book ${index === activeIndex ? "is-selected" : ""}`}
-            onClick={() => onActiveIndexChange(index)}
-            aria-pressed={index === activeIndex}
-            aria-label={`${book.title} select`}
+            to={`/books/${book.isbn}`}
+            className={`bookshelf-book ${layout === "list" ? "bookshelf-book-list" : "bookshelf-book-grid"}`}
+            aria-label={`${book.title} の詳細を見る`}
           >
             <CoverArt book={book} className="bookshelf-cover" />
             <div className="bookshelf-copy">
@@ -35,39 +24,13 @@ export function CoverFlowShelf({
                 <TagChip>{book.readingStatus}</TagChip>
                 <TagChip tone="outline">{book.bookFormat}</TagChip>
               </div>
-              <h4>{book.title || "Untitled"}</h4>
-              <p>{book.author || "Unknown author"}</p>
+              <h4 title={book.title}>{book.title || "無題"}</h4>
+              <p>{book.author || "著者未設定"}</p>
               <small>{book.categoryName}</small>
             </div>
-          </button>
+          </Link>
         ))}
       </div>
-
-      {selectedBook ? (
-        <div className="bookshelf-selection">
-          <div className="section-heading">
-            <div>
-              <p className="section-label">Selected book</p>
-              <h3>{selectedBook.title}</h3>
-            </div>
-            <Link to={`/books/${selectedBook.isbn}`} className="text-link">
-              Open detail
-            </Link>
-          </div>
-          <div className="bookshelf-selection-main">
-            <CoverArt book={selectedBook} large />
-            <div className="bookshelf-selection-copy">
-              <div className="chip-row">
-                <TagChip>{selectedBook.categoryName}</TagChip>
-                <TagChip tone="outline">{selectedBook.bookFormat}</TagChip>
-                <TagChip>{selectedBook.readingStatus}</TagChip>
-              </div>
-              <p className="subtle">{selectedBook.author || "Unknown author"}</p>
-              <p>{selectedBook.publisher || "-"}</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

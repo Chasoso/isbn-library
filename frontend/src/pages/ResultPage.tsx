@@ -51,7 +51,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
         setBook(existing);
       } catch (error) {
         if (!(error instanceof ApiError) || error.status !== 404) {
-          setMessage("書籍情報の取得に失敗しました。");
+          setMessage("書籍情報の読み込みに失敗しました。");
           setLoading(false);
           return;
         }
@@ -100,21 +100,17 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
         setRegistered(true);
         setMessage("この本はすでに登録されています。");
       } else {
-        setMessage("登録に失敗しました。");
+        setMessage("書籍の登録に失敗しました。");
       }
     }
   };
 
   return (
-    <AppLayout title="判定結果" subtitle={`ISBN ${isbn}`}>
+    <AppLayout title="スキャン結果" subtitle={`ISBN ${isbn}`}>
       <section className={`panel result-banner ${registered ? "is-registered" : "is-unregistered"}`}>
-        <p className="section-label">判定ステータス</p>
+        <p className="section-label">SCAN RESULT</p>
         <h2>
-          {loading
-            ? "判定中..."
-            : registered
-              ? "この本はすでに登録されています"
-              : "この本は未登録です"}
+          {loading ? "判定中..." : registered ? "この本はすでに登録されています" : "この本は未登録です"}
         </h2>
         {message ? <p className="subtle">{message}</p> : null}
       </section>
@@ -123,7 +119,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
         <div className="section-heading">
           <div>
             <p className="section-label">書誌情報</p>
-            <h3>登録前に内容を確認</h3>
+            <h3>登録前に内容を確認します</h3>
           </div>
           {!registered ? (
             <Link className="text-link" to="/categories">
@@ -133,25 +129,44 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
         </div>
         {loading ? <p className="empty-copy">書誌情報を取得しています...</p> : null}
         {!loading && lookupFailed ? (
-          <p className="empty-copy">Google Books API から書誌情報を取得できませんでした。</p>
+          <p className="empty-copy">外部サービスから書誌情報を取得できませんでした。</p>
         ) : null}
         {!loading && book ? (
           <>
             <div className="detail-grid">
-              <CoverArt book={book} large />
+              <CoverArt book={book} large className="detail-cover" />
               <div className="detail-copy">
-                <h2>{book.title || "タイトル未設定"}</h2>
-                <p><strong>著者:</strong> {book.author || "-"}</p>
-                <p><strong>出版社:</strong> {book.publisher || "-"}</p>
-                <p><strong>発売日:</strong> {book.publishedDate || "-"}</p>
-                <p><strong>分類:</strong> {"bookFormat" in book ? book.bookFormat : bookFormat}</p>
-                <p>
-                  <strong>カテゴリ:</strong>{" "}
-                  {"categoryName" in book
-                    ? book.categoryName
-                    : categories.find((item) => item.categoryId === categoryId)?.name ?? "その他"}
-                </p>
-                <p><strong>読書ステータス:</strong> {"readingStatus" in book ? book.readingStatus : readingStatus}</p>
+                <h2>{book.title || "無題"}</h2>
+                <dl className="detail-meta-list">
+                  <div>
+                    <dt>著者</dt>
+                    <dd>{book.author || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>出版社</dt>
+                    <dd>{book.publisher || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>発売日</dt>
+                    <dd>{book.publishedDate || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>形態</dt>
+                    <dd>{"bookFormat" in book ? book.bookFormat : bookFormat}</dd>
+                  </div>
+                  <div>
+                    <dt>カテゴリ</dt>
+                    <dd>
+                      {"categoryName" in book
+                        ? book.categoryName
+                        : categories.find((item) => item.categoryId === categoryId)?.name ?? "未設定"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>読書ステータス</dt>
+                    <dd>{"readingStatus" in book ? book.readingStatus : readingStatus}</dd>
+                  </div>
+                </dl>
               </div>
             </div>
             {!registered ? (
@@ -179,7 +194,9 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
                         </option>
                       ))}
                     </select>
-                    {categories.length === 0 ? <small>カテゴリ管理で先にカテゴリを作成してください。</small> : null}
+                    {categories.length === 0 ? (
+                      <small>先にカテゴリ管理でカテゴリを追加してください。</small>
+                    ) : null}
                   </label>
                   <label>
                     <span>読書ステータス</span>
@@ -195,7 +212,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
                     </select>
                   </label>
                 </div>
-                <button className="primary-pill" onClick={() => void handleCreate()} disabled={categories.length === 0}>
+                <button className="primary-button" onClick={() => void handleCreate()} disabled={categories.length === 0}>
                   蔵書に登録する
                 </button>
               </>

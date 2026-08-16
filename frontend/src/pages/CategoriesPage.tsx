@@ -37,7 +37,7 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
         setCategories(categoryResult.items);
         setBooks(bookResult.items);
       } catch {
-        setMessage("Failed to load categories.");
+        setMessage("カテゴリを読み込めませんでした。");
       } finally {
         setLoading(false);
       }
@@ -99,7 +99,7 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
         setCategories((current) =>
           [...current, created].sort((left, right) => left.sortOrder - right.sortOrder),
         );
-        setMessage("Category created.");
+        setMessage("カテゴリを追加しました。");
       } else {
         const updated = await updateCategory(accessToken, editor.categoryId, {
           name: editor.name.trim(),
@@ -110,15 +110,15 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
             .map((category) => (category.categoryId === editor.categoryId ? updated : category))
             .sort((left, right) => left.sortOrder - right.sortOrder),
         );
-        setMessage("Category updated.");
+        setMessage("カテゴリを更新しました。");
       }
 
       setEditor(null);
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
-        setMessage("A category with the same name already exists.");
+        setMessage("同じ名前のカテゴリがすでにあります。");
       } else {
-        setMessage("Failed to save category.");
+        setMessage("カテゴリの保存に失敗しました。");
       }
     } finally {
       setSaving(false);
@@ -126,15 +126,15 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <AppLayout title="Categories" subtitle="Keep the shelf taxonomy compact and editable.">
+    <AppLayout title="カテゴリ管理" subtitle="棚のラベルを編集して、分類を整えます。">
       <section className="panel categories-panel">
         <div className="section-heading">
           <div>
             <p className="section-label">CATEGORY LIST</p>
-            <h3>Manage the labels behind the shelf</h3>
+            <h3>棚のラベルを編集する</h3>
           </div>
           <button className="primary-button" type="button" onClick={openCreate}>
-            Add category
+            ＋ 追加
           </button>
         </div>
 
@@ -144,32 +144,30 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search categories"
-              aria-label="Search categories"
+              placeholder="カテゴリを検索"
+              aria-label="カテゴリを検索"
             />
           </div>
-          <p className="subtle category-summary">
-            {filteredCategories.length} categories
-          </p>
+          <p className="subtle category-summary">{filteredCategories.length}件</p>
         </div>
 
         {message ? <p className="subtle">{message}</p> : null}
-        {loading ? <p className="empty-copy">Loading categories...</p> : null}
+        {loading ? <p className="empty-copy">カテゴリを読み込み中です...</p> : null}
 
         {!loading ? (
           <div className="category-table">
             <div className="category-table-head">
-              <span>Japanese</span>
-              <span>English</span>
-              <span>Books</span>
-              <span>Action</span>
+              <span>日本語名</span>
+              <span>英語名</span>
+              <span>冊数</span>
+              <span>操作</span>
             </div>
             {filteredCategories.length > 0 ? (
               filteredCategories.map((category) => (
                 <div className="category-row" key={category.categoryId}>
                   <div className="category-row-main">
                     <strong>{category.name}</strong>
-                    <small>#{category.sortOrder}</small>
+                    <small>{category.nameEn || " "}</small>
                   </div>
                   <span className="category-row-english">{category.nameEn || "-"}</span>
                   <span className="book-count">{bookCountByCategory[category.categoryId] ?? 0}</span>
@@ -177,16 +175,16 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
                     type="button"
                     className="row-action"
                     onClick={() => openEdit(category)}
-                    aria-label={`Edit ${category.name}`}
+                    aria-label={`${category.name} を編集`}
                   >
-                    Edit
+                    …
                   </button>
                 </div>
               ))
             ) : (
               <div className="empty-state">
-                <h4>No categories found</h4>
-                <p>Try a different search term or add a new category.</p>
+                <h4>カテゴリが見つかりませんでした</h4>
+                <p>検索語を変えるか、新しいカテゴリを追加してください。</p>
               </div>
             )}
           </div>
@@ -206,34 +204,34 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
               <div>
                 <p className="eyebrow">{editor.mode === "create" ? "NEW CATEGORY" : "EDIT CATEGORY"}</p>
                 <h2 id="category-editor-title">
-                  {editor.mode === "create" ? "Add a category" : "Update category"}
+                  {editor.mode === "create" ? "カテゴリを追加" : "カテゴリを編集"}
                 </h2>
               </div>
-              <button type="button" className="icon-button" onClick={() => setEditor(null)} aria-label="Close editor">
+              <button type="button" className="icon-button" onClick={() => setEditor(null)} aria-label="閉じる">
                 ×
               </button>
             </div>
             <label>
-              Japanese name
+              日本語名
               <input
                 value={editor.name}
                 onChange={(event) => setEditor({ ...editor, name: event.target.value })}
-                placeholder="Category name"
-                aria-label="Japanese name"
+                placeholder="カテゴリ名"
+                aria-label="日本語名"
               />
             </label>
             <label>
-              English name
+              英語名
               <input
                 value={editor.nameEn}
                 onChange={(event) => setEditor({ ...editor, nameEn: event.target.value })}
                 placeholder="English name"
-                aria-label="English name"
+                aria-label="英語名"
               />
             </label>
             <div className="sheet-actions">
               <button type="button" className="ghost-button" onClick={() => setEditor(null)}>
-                Cancel
+                キャンセル
               </button>
               <button
                 type="button"
@@ -241,7 +239,7 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
                 onClick={() => void saveEditor()}
                 disabled={saving || !editor.name.trim()}
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? "保存中..." : "保存"}
               </button>
             </div>
           </section>

@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AppLayout } from "../app-shell";
 import { getBooks } from "../lib/api";
+import { readingStatuses } from "../readingStatus";
 import type { AuthState, Book } from "../types";
 import { RecentBookCard, SearchBar, SummaryCards, sortBooks } from "../view-helpers";
+
+const unreadStatus = readingStatuses[0];
 
 export function HomePage({ authState }: { authState: AuthState }) {
   const navigate = useNavigate();
@@ -24,36 +27,36 @@ export function HomePage({ authState }: { authState: AuthState }) {
     void load();
   }, [authState.accessToken]);
 
-  const recentBooks = books.slice(0, 6);
-  const unreadCount = books.filter((book) => book.readingStatus === "未読").length;
+  const recentBooks = books.slice(0, 3);
+  const unreadCount = books.filter((book) => book.readingStatus === unreadStatus).length;
 
   return (
     <AppLayout
       title="ホーム"
-      subtitle={authState.name ? `${authState.name}さんの蔵書ダッシュボード` : null}
+      subtitle={`${authState.name ?? "アカウント"}さんの蔵書ダッシュボード`}
     >
       <section className="dashboard-hero panel">
         <div className="hero-copy">
           <p className="section-label">あなたの蔵書</p>
-          <h2>本棚の状態をひと目で把握</h2>
+          <h2>棚の状態をひと目でつかむ</h2>
           <p className="subtle">
-            重複購入の確認だけでなく、最近追加した本や分類の広がりまで、今の蔵書を
-            気持ちよく眺められるホームです。
+            冊数、未読数、新着本をまとめて見渡せます。次に読む本もすぐ検索できます。
           </p>
         </div>
+
         <SummaryCards
           items={[
             {
               label: "総冊数",
               value: `${books.length}`,
               tone: "teal",
-              caption: books.length > 0 ? "蔵書を管理中" : "まずは1冊登録",
+              caption: books.length > 0 ? "蔵書を管理中" : "まずは1冊登録しましょう",
             },
             {
               label: "未読数",
               value: `${unreadCount}`,
               tone: "sky",
-              caption: unreadCount > 0 ? "次に読みたい本" : "未読はありません",
+              caption: unreadCount > 0 ? "次に読みたい本" : "未読の本はありません",
             },
           ]}
         />
@@ -63,7 +66,7 @@ export function HomePage({ authState }: { authState: AuthState }) {
         <div className="section-heading">
           <div>
             <p className="section-label">検索</p>
-            <h3>次に読みたい1冊をすぐ探す</h3>
+            <h3>次に読みたい本をすぐ探す</h3>
           </div>
         </div>
         <SearchBar
@@ -92,9 +95,7 @@ export function HomePage({ authState }: { authState: AuthState }) {
         {!loading && recentBooks.length === 0 ? (
           <div className="empty-state">
             <p>まだ本が登録されていません。</p>
-            <p className="subtle">
-              右下の「スキャンする」から、最初の1冊を登録できます。
-            </p>
+            <p className="subtle">右上のスキャンか、蔵書一覧から追加できます。</p>
           </div>
         ) : null}
         <div className="recent-grid">
