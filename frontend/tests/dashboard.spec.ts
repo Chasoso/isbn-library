@@ -53,9 +53,10 @@ test.describe("frontend editorial bookshelf visuals", () => {
 
   test("book detail page keeps the reading controls and metadata visible", async ({ page }, testInfo) => {
     await page.goto("/books/9784860648114");
-    await expect(page.locator(".detail-grid")).toBeVisible();
-    await expect(page.locator(".detail-status-panel")).toBeVisible();
-    await expect(page.locator(".detail-actions")).toBeVisible();
+    await expect(page.locator(".detail-layout")).toBeVisible();
+    await expect(page.locator(".detail-controls")).toBeVisible();
+    await expect(page.locator(".detail-save-button")).toBeVisible();
+    await expect(page.locator(".detail-danger-zone")).toBeVisible();
     await assertNoHorizontalScroll(page);
 
     await page.screenshot({
@@ -87,7 +88,7 @@ test.describe("frontend editorial bookshelf visuals", () => {
   test("scan page keeps the camera-first layout", async ({ page }, testInfo) => {
     await page.goto("/scan");
     await expect(page.locator(".scan-panel")).toBeVisible();
-    await expect(page.locator(".scan-tips")).toBeVisible();
+    await expect(page.locator(".scan-message")).toBeVisible();
     await expect(page.locator(".scan-manual")).toBeVisible();
     await assertNoHorizontalScroll(page);
 

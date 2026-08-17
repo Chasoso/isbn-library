@@ -32,7 +32,7 @@ export function ScanPage() {
   const compact = useCompactLayout();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
-  const [message, setMessage] = useState("カメラで ISBN を読み取るか、手入力してください。");
+  const [message, setMessage] = useState("ISBN を読み取るか、手入力してください。");
   const [isbnInput, setIsbnInput] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   const [cameraUnavailable, setCameraUnavailable] = useState(false);
@@ -60,7 +60,7 @@ export function ScanPage() {
 
       const isbn = normalizeIsbn(text);
       if (!isbn) {
-        setMessage("ISBN として読み取れませんでした。もう一度かざしてください。");
+        setMessage("ISBN として読み取れませんでした。少し位置を変えてください。");
         return;
       }
 
@@ -159,17 +159,22 @@ export function ScanPage() {
     navigate(`/result/${isbn}`);
   };
 
+  const showManualFirst = cameraUnavailable || compact;
+
   return (
     <AppLayout title="スキャン" subtitle="ISBN を読み取って、蔵書登録へ進みます。">
       <section className="panel scan-panel">
-        <div className="section-heading">
-          <div>
-            <p className="section-label">ISBN スキャン</p>
-            <h3>ISBN を読み取る</h3>
-          </div>
+        <div className="scan-copy">
+          <p className="section-label">ISBN スキャン</p>
+          <h3>ISBN を読み取る</h3>
+          {!cameraUnavailable ? (
+            <p className="subtle scan-summary">
+              カメラが使えないときは手入力で進めます。読み取りは中央の枠に合わせてください。
+            </p>
+          ) : null}
         </div>
 
-        {(cameraUnavailable || compact) ? (
+        {showManualFirst ? (
           <div className="scan-manual scan-manual-first">
             <label>
               ISBNを入力
@@ -185,7 +190,7 @@ export function ScanPage() {
               <button type="button" className="primary-button" onClick={submitManualIsbn}>
                 確認して検索
               </button>
-              <button type="button" className="ghost-button" onClick={() => setRetryCount((count) => count + 1)}>
+              <button type="button" className="ghost-button scan-retry-button" onClick={() => setRetryCount((count) => count + 1)}>
                 カメラを再試行
               </button>
             </div>
@@ -201,9 +206,7 @@ export function ScanPage() {
           </div>
         ) : null}
 
-        <p className="subtle scan-message">{message}</p>
-
-        {!cameraUnavailable && !compact ? (
+        {!showManualFirst ? (
           <div className="scan-manual">
             <label>
               ISBNを入力
@@ -219,18 +222,14 @@ export function ScanPage() {
               <button type="button" className="primary-button" onClick={submitManualIsbn}>
                 確認して検索
               </button>
-              <button type="button" className="ghost-button" onClick={() => setRetryCount((count) => count + 1)}>
+              <button type="button" className="ghost-button scan-retry-button" onClick={() => setRetryCount((count) => count + 1)}>
                 カメラを再試行
               </button>
             </div>
           </div>
         ) : null}
 
-        <ul className="scan-tips">
-          <li>バーコードをまっすぐ枠の中央へ合わせてください。</li>
-          <li>うまく読めないときは、少し離して向きを変えてください。</li>
-          <li>明るい場所で撮ると読み取りやすくなります。</li>
-        </ul>
+        <p className="subtle scan-message">{message}</p>
       </section>
     </AppLayout>
   );

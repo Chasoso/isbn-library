@@ -84,9 +84,12 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
         ) : null}
         {book ? (
           <>
-            <div className="detail-grid">
-              <CoverArt book={book} large className="detail-cover" />
-              <div className="detail-copy">
+            <div className="detail-layout">
+              <div className="detail-cover-panel">
+                <CoverArt book={book} large className="detail-cover" />
+              </div>
+
+              <div className="detail-summary">
                 <div className="chip-row">
                   <TagChip>{book.categoryName}</TagChip>
                   <TagChip tone="outline">{book.bookFormat}</TagChip>
@@ -115,7 +118,7 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
               </div>
             </div>
 
-            <div className="detail-status-panel">
+            <div className="detail-controls">
               <div className="classification-grid detail-status-grid">
                 <label>
                   <span>読書ステータス</span>
@@ -132,18 +135,20 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
                   </select>
                 </label>
               </div>
-              <div className="detail-actions">
-                <button
-                  className="primary-button"
-                  onClick={() => void handleUpdateReadingStatus()}
-                  disabled={savingStatus}
-                >
-                  {savingStatus ? "保存中..." : "ステータスを保存"}
-                </button>
-                <button className="ghost-button danger-button" onClick={() => void handleDelete()}>
-                  削除
-                </button>
-              </div>
+              <button
+                className="primary-button detail-save-button"
+                onClick={() => void handleUpdateReadingStatus()}
+                disabled={savingStatus}
+              >
+                {savingStatus ? "保存中..." : "ステータスを保存"}
+              </button>
+            </div>
+
+            <div className="detail-danger-zone">
+              <p className="section-label">危険な操作</p>
+              <button className="ghost-button danger-button" onClick={() => void handleDelete()}>
+                削除
+              </button>
             </div>
           </>
         ) : null}

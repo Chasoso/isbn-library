@@ -128,9 +128,6 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
             <p className="section-label">CATEGORY LIST</p>
             <h3>カテゴリを編集する</h3>
           </div>
-          <button className="primary-button" type="button" onClick={openCreate}>
-            ＋ 追加
-          </button>
         </div>
 
         <div className="category-toolbar">
@@ -143,7 +140,10 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
               aria-label="カテゴリを検索"
             />
           </div>
-          <p className="subtle category-summary">{filteredCategories.length}件</p>
+          <p className="category-count">{filteredCategories.length}カテゴリ</p>
+          <button className="primary-button category-add-button" type="button" onClick={openCreate}>
+            ＋ 追加
+          </button>
         </div>
 
         {message ? <p className="subtle">{message}</p> : null}

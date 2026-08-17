@@ -14,8 +14,10 @@ export function SummaryCards({
       <div className="summary-strip" aria-label="蔵書サマリー">
         {items.map((item) => (
           <article key={item.label} className={`summary-strip-item tone-${item.tone}`}>
-            <p>{item.label}</p>
-            <strong>{item.value}</strong>
+            <div className="summary-strip-head">
+              <p>{item.label}</p>
+              <strong>{item.value}</strong>
+            </div>
             <span>{item.caption}</span>
           </article>
         ))}
@@ -51,7 +53,7 @@ export function SearchBar({
 }) {
   return (
     <form
-      className="search-bar"
+      className="search-bar compact-search-form"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -64,7 +66,7 @@ export function SearchBar({
         placeholder={placeholder}
         aria-label={placeholder}
       />
-      <button type="submit" className="inline-search-action">
+      <button type="submit" className="inline-search-action search-submit">
         <span className="inline-search-action-label">{submitLabel}</span>
       </button>
     </form>
