@@ -111,7 +111,7 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
       setEditor(null);
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
-        setMessage("同じ名前のカテゴリがすでにあります。");
+        setMessage("同じ名前のカテゴリがあります。");
       } else {
         setMessage("カテゴリの保存に失敗しました。");
       }
@@ -121,15 +121,8 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <AppLayout title="カテゴリ管理" subtitle="棚のラベルを整えて、分類を見やすくします。">
+    <AppLayout title="カテゴリ管理">
       <section className="panel categories-panel">
-        <div className="section-heading category-heading">
-          <div>
-            <p className="section-label">CATEGORY LIST</p>
-            <h3>カテゴリを編集する</h3>
-          </div>
-        </div>
-
         <div className="category-toolbar">
           <div className="category-search">
             <span aria-hidden="true">⌕</span>
@@ -142,12 +135,12 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
           </div>
           <p className="category-count">{filteredCategories.length}カテゴリ</p>
           <button className="primary-button category-add-button" type="button" onClick={openCreate}>
-            ＋ 追加
+            ＋追加
           </button>
         </div>
 
         {message ? <p className="subtle">{message}</p> : null}
-        {loading ? <p className="empty-copy">カテゴリを読み込み中です...</p> : null}
+        {loading ? <p className="empty-copy">カテゴリを読み込み中...</p> : null}
 
         {!loading ? (
           <div className="category-table">
@@ -162,7 +155,7 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
                 <div className="category-row" key={category.categoryId}>
                   <div className="category-row-main">
                     <strong>{category.name}</strong>
-                    <small>{category.nameEn || " "}</small>
+                    <small>{category.nameEn || "-"}</small>
                   </div>
                   <span className="category-row-english">{category.nameEn || "-"}</span>
                   <span className="book-count">{bookCountByCategory[category.categoryId] ?? 0}</span>
@@ -197,7 +190,6 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
           >
             <div className="sheet-heading">
               <div>
-                <p className="eyebrow">{editor.mode === "create" ? "NEW CATEGORY" : "EDIT CATEGORY"}</p>
                 <h2 id="category-editor-title">{editor.mode === "create" ? "カテゴリを追加" : "カテゴリを編集"}</h2>
               </div>
               <button type="button" className="icon-button" onClick={() => setEditor(null)} aria-label="閉じる">

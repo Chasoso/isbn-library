@@ -68,14 +68,14 @@ test.describe("frontend editorial bookshelf visuals", () => {
   test("categories page uses a compact table with modal editing", async ({ page }, testInfo) => {
     await page.goto("/categories");
     await expect(page.locator(".category-table")).toBeVisible();
-    await expect(page.getByRole("button", { name: "＋ 追加" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "＋追加" })).toBeVisible();
     await assertNoHorizontalScroll(page);
 
-    await page.getByRole("button", { name: "＋ 追加" }).click();
+    await page.getByRole("button", { name: "＋追加" }).click();
     await expect(page.locator(".edit-sheet")).toBeVisible();
     await page.getByRole("button", { name: "閉じる" }).click();
 
-    await page.getByRole("button", { name: /を編集$/ }).first().click();
+    await page.getByRole("button", { name: /を編集/ }).first().click();
     await expect(page.locator(".edit-sheet")).toBeVisible();
     await page.getByRole("button", { name: "閉じる" }).click();
 

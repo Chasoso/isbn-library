@@ -56,9 +56,7 @@ export function ProtectedLayout({
         <div className="auth-card">
           <p className="kicker">ISBN LIBRARY</p>
           <h1>サインインして蔵書を開く</h1>
-          <p className="auth-copy">
-            Cognito でサインインすると、蔵書の確認、登録、検索、編集を行えます。
-          </p>
+          <p className="auth-copy">Cognito でサインインすると、蔵書の確認、登録、検索、編集を行えます。</p>
           <button className="primary-button full" onClick={() => void signIn()}>
             サインイン
           </button>
@@ -81,7 +79,7 @@ export function AppLayout({
 }) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [accountLabel, setAccountLabel] = useState("アカウント");
+  const [accountLabel, setAccountLabel] = useState("ユーザー");
   const [accountDetail, setAccountDetail] = useState<string | null>(null);
   const [accountInitials, setAccountInitials] = useState("U");
 
@@ -92,13 +90,11 @@ export function AppLayout({
 
     const loadUser = async (): Promise<void> => {
       const user = await userManager.getUser();
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       const name = user?.profile.name?.toString().trim() ?? "";
       const email = user?.profile.email?.toString().trim() ?? "";
-      const label = name || email || "アカウント";
+      const label = name || email || "ユーザー";
       const initials = label
         .split(/\s+/)
         .filter(Boolean)
@@ -129,7 +125,6 @@ export function AppLayout({
         <div className="header-topline">
           <Link to="/" className="brand-wordmark" aria-label="ISBN Library ホーム">
             <span className="brand-wordmark-main">ISBN LIBRARY</span>
-            <span className="brand-wordmark-sub">EDITED SHELF</span>
           </Link>
 
           <nav className="nav-tabs desktop-nav" aria-label="メインナビゲーション">
@@ -151,7 +146,6 @@ export function AppLayout({
               {accountInitials}
             </span>
             <span className="user-menu-copy">
-              <small>ACCOUNT</small>
               <strong>{accountLabel}</strong>
             </span>
           </button>
@@ -184,8 +178,7 @@ export function AppLayout({
           >
             <div className="sheet-heading">
               <div>
-                <p className="eyebrow">ACCOUNT</p>
-                <h2 id="account-menu-title">アカウント</h2>
+                <h2 id="account-menu-title">{accountLabel}</h2>
               </div>
               <button
                 type="button"
@@ -196,10 +189,11 @@ export function AppLayout({
                 ×
               </button>
             </div>
-            <div className="menu-meta">
-              <strong>{accountLabel}</strong>
-              {accountDetail ? <p>{accountDetail}</p> : null}
-            </div>
+            {accountDetail ? (
+              <div className="menu-meta">
+                <p>{accountDetail}</p>
+              </div>
+            ) : null}
             <button type="button" className="primary-button full" onClick={() => void signOut()}>
               ログアウト
             </button>
@@ -232,7 +226,7 @@ export function AuthCallbackPage({
         });
         navigate("/", { replace: true });
       } catch {
-        setError("サインインの処理に失敗しました。");
+        setError("サインイン処理に失敗しました。");
       }
     };
 
@@ -240,9 +234,7 @@ export function AuthCallbackPage({
   }, [navigate, onLoaded]);
 
   useEffect(() => {
-    if (!error) {
-      return;
-    }
+    if (!error) return;
 
     const timer = window.setTimeout(() => {
       window.location.replace("/");
@@ -255,11 +247,9 @@ export function AuthCallbackPage({
     <div className="app-shell loading-screen">
       <div className="loading-panel">
         <p className="kicker">COGNITO CALLBACK</p>
-        <h1>{error ? "サインインできませんでした" : "サインインを完了しています"}</h1>
+        <h1>{error ? "サインインできませんでした" : "サインインを確認しています"}</h1>
         <p className="auth-copy">
-          {error
-            ? error
-            : "認証結果を受け取って、蔵書画面へ戻っています。"}
+          {error ? error : "認証情報を確認しています。しばらくお待ちください。"}
         </p>
       </div>
     </div>

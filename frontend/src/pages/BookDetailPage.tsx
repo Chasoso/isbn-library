@@ -28,7 +28,7 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
           setNotFound(true);
-          setMessage("この書籍は見つかりませんでした。");
+          setMessage("本が見つかりませんでした。");
         } else {
           setMessage("書籍情報の読み込みに失敗しました。");
         }
@@ -71,9 +71,9 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <AppLayout title="書籍詳細" subtitle={book?.title ?? "選択した書籍の詳細を表示します。"}>
+    <AppLayout title="書籍詳細">
       <section className="panel detail-panel">
-        {loading ? <p className="empty-copy">書籍情報を読み込み中です...</p> : null}
+        {loading ? <p className="empty-copy">書籍情報を読み込み中...</p> : null}
         {message ? <p className="subtle">{message}</p> : null}
         {notFound ? (
           <p>
@@ -96,7 +96,7 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
                   <TagChip>{book.readingStatus}</TagChip>
                 </div>
                 <h2>{book.title}</h2>
-                <p className="author-line">{book.author || "著者不明"}</p>
+                <p className="author-line">{book.author || "-"}</p>
                 <dl className="detail-meta-list">
                   <div>
                     <dt>出版社</dt>
@@ -145,7 +145,6 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
             </div>
 
             <div className="detail-danger-zone">
-              <p className="section-label">危険な操作</p>
               <button className="ghost-button danger-button" onClick={() => void handleDelete()}>
                 削除
               </button>

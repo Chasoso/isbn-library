@@ -6,7 +6,7 @@ import { CoverFlowShelf } from "../components/CoverFlowShelf";
 import { getBooks, getCategories } from "../lib/api";
 import { readingStatuses } from "../readingStatus";
 import type { Book, CategoryDefinition } from "../types";
-import { sortBooks, SearchBar } from "../view-helpers";
+import { SearchBar, sortBooks } from "../view-helpers";
 
 const sortOptions = [
   { value: "newest", label: "新しい順" },
@@ -114,9 +114,7 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
     const handle = window.setTimeout(() => {
       const nextSearch = buildFilterSearch();
       const currentSearch = location.search.startsWith("?") ? location.search.slice(1) : location.search;
-      if (nextSearch === currentSearch) {
-        return;
-      }
+      if (nextSearch === currentSearch) return;
       navigate(`/books${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
     }, 180);
 
@@ -144,7 +142,7 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <AppLayout title="蔵書一覧" subtitle="検索、絞り込み、並び替えをひとつの画面で行えます。">
+    <AppLayout title="蔵書一覧">
       <section className="panel library-tools">
         <div className="books-search-strip">
           <SearchBar
@@ -252,7 +250,7 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
           </div>
         ) : null}
 
-        {loading ? <div className="empty-state">蔵書を読み込み中です...</div> : null}
+        {loading ? <div className="empty-state">蔵書を読み込み中...</div> : null}
         {!loading && books.length === 0 ? (
           <div className="empty-state">
             <h3>本が見つかりませんでした</h3>
@@ -273,7 +271,6 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
           >
             <div className="sheet-heading">
               <div>
-                <p className="eyebrow">FILTERS</p>
                 <h2 id="books-filter-title">絞り込み</h2>
               </div>
               <button
@@ -320,10 +317,7 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
               </label>
               <label>
                 <span>読書ステータス</span>
-                <select
-                  value={readingStatusFilter}
-                  onChange={(event) => setReadingStatusFilter(event.target.value)}
-                >
+                <select value={readingStatusFilter} onChange={(event) => setReadingStatusFilter(event.target.value)}>
                   <option value="">すべて</option>
                   {readingStatuses.map((item) => (
                     <option key={item} value={item}>
@@ -337,8 +331,8 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
               <button type="button" className="ghost-button" onClick={resetFilters}>
                 解除
               </button>
-              <button type="button" className="primary-button" onClick={() => setFilterOpen(false)}>
-                {books.length}冊を表示
+              <button type="button" className="primary-button" onClick={applyFilters}>
+                適用
               </button>
             </div>
           </section>
