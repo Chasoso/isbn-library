@@ -11,31 +11,15 @@ import { useNavigate } from "react-router-dom";
 import { AppLayout } from "../app-shell";
 import { normalizeIsbn } from "../lib/isbn";
 
-function useCompactLayout(): boolean {
-  const [compact, setCompact] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia("(max-width: 480px)").matches : false,
-  );
-
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 480px)");
-    const update = () => setCompact(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
-  return compact;
-}
-
 export function ScanPage() {
   const navigate = useNavigate();
-  const compact = useCompactLayout();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
-  const [message, setMessage] = useState("ISBN を読み取るか、手入力してください。");
+  const [message, setMessage] = useState("ISBNを読み取るか、手入力してください。");
   const [isbnInput, setIsbnInput] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   const [cameraUnavailable, setCameraUnavailable] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
 
   useEffect(() => {
     const hints = new Map();
@@ -60,7 +44,7 @@ export function ScanPage() {
 
       const isbn = normalizeIsbn(text);
       if (!isbn) {
-        setMessage("ISBN として読み取れませんでした。少し位置を変えてください。");
+        setMessage("ISBNとして読み取れませんでした。少し位置を変えてください。");
         return;
       }
 
@@ -73,6 +57,9 @@ export function ScanPage() {
     };
 
     const start = async (): Promise<void> => {
+      setCameraReady(false);
+      setCameraUnavailable(false);
+
       if (!videoRef.current) {
         setCameraUnavailable(true);
         setMessage("この環境ではカメラを利用できません。ISBNを手入力してください。");
@@ -122,6 +109,7 @@ export function ScanPage() {
 
         controlsRef.current = controls;
         setCameraUnavailable(false);
+        setCameraReady(true);
         setMessage("バーコードを中央の枠に合わせてください。");
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
@@ -152,21 +140,21 @@ export function ScanPage() {
   const submitManualIsbn = (): void => {
     const isbn = normalizeIsbn(isbnInput);
     if (!isbn) {
-      setMessage("ISBN の形式を確認してください。");
+      setMessage("ISBNの形式を確認してください。");
       return;
     }
 
     navigate(`/result/${isbn}`);
   };
 
-  const showManualFirst = cameraUnavailable || compact;
+  const showManualFirst = cameraUnavailable;
 
   return (
     <AppLayout title="スキャン" subtitle="ISBN を読み取って、蔵書登録へ進みます。">
       <section className="panel scan-panel">
         <div className="scan-copy">
           <p className="section-label">ISBN スキャン</p>
-          <h3>ISBN を読み取る</h3>
+          <h3>ISBNを読み取る</h3>
           {!cameraUnavailable ? (
             <p className="subtle scan-summary">
               カメラが使えないときは手入力で進めます。読み取りは中央の枠に合わせてください。
@@ -190,14 +178,18 @@ export function ScanPage() {
               <button type="button" className="primary-button" onClick={submitManualIsbn}>
                 確認して検索
               </button>
-              <button type="button" className="ghost-button scan-retry-button" onClick={() => setRetryCount((count) => count + 1)}>
+              <button
+                type="button"
+                className="ghost-button scan-retry-button"
+                onClick={() => setRetryCount((count) => count + 1)}
+              >
                 カメラを再試行
               </button>
             </div>
           </div>
         ) : null}
 
-        {!cameraUnavailable ? (
+        {!cameraUnavailable && cameraReady ? (
           <div className="scanner-shell">
             <video ref={videoRef} className="scanner-video" muted playsInline autoPlay />
             <div className="scanner-overlay" aria-hidden="true">
@@ -222,7 +214,11 @@ export function ScanPage() {
               <button type="button" className="primary-button" onClick={submitManualIsbn}>
                 確認して検索
               </button>
-              <button type="button" className="ghost-button scan-retry-button" onClick={() => setRetryCount((count) => count + 1)}>
+              <button
+                type="button"
+                className="ghost-button scan-retry-button"
+                onClick={() => setRetryCount((count) => count + 1)}
+              >
                 カメラを再試行
               </button>
             </div>

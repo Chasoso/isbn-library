@@ -140,7 +140,7 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
                 onClick={() => void handleUpdateReadingStatus()}
                 disabled={savingStatus}
               >
-                {savingStatus ? "保存中..." : "ステータスを保存"}
+                {savingStatus ? "保存中..." : "保存"}
               </button>
             </div>
 
