@@ -17,11 +17,19 @@
   --radius: 3px;
   --content-bottom-space: 124px;
   --mobile-bottom-space: calc(140px + env(safe-area-inset-bottom));
-  font-family:
+  --font-sans:
+    "Noto Sans JP",
     "Hiragino Kaku Gothic ProN",
+    "Hiragino Sans",
     "Yu Gothic UI",
     "Yu Gothic",
+    "Meiryo",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     sans-serif;
+  font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
   color: var(--ink);
@@ -38,11 +46,18 @@ body,
   min-height: 100%;
 }
 
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-sans);
+}
+
 html {
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.25) 1px, transparent 1px),
-    var(--paper);
-  background-size: 100% 5px;
+  background: var(--paper);
+  font-family: var(--font-sans);
 }
 
 body {
@@ -50,6 +65,7 @@ body {
   min-width: 320px;
   overflow-x: clip;
   background: transparent;
+  font-family: var(--font-sans);
 }
 
 a {
@@ -101,8 +117,7 @@ img {
   display: grid;
   gap: 14px;
   padding: 18px 0 14px;
-  border-bottom: 1px solid var(--rule);
-  background: rgba(244, 239, 230, 0.98);
+  background: var(--paper);
 }
 
 .header-topline {
@@ -119,7 +134,6 @@ img {
 }
 
 .brand-wordmark-main {
-  font-family: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
   font-size: 13px;
   letter-spacing: 0.22em;
   font-weight: 700;
@@ -151,7 +165,6 @@ img {
 .detail-copy h2,
 .section-heading h3 {
   margin: 0;
-  font-family: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
   font-weight: 500;
   letter-spacing: 0.03em;
 }
@@ -317,7 +330,6 @@ img {
 .auth-card h1,
 .loading-panel h1 {
   margin: 8px 0 10px;
-  font-family: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
   font-size: clamp(1.8rem, 5vw, 2.8rem);
   line-height: 1.15;
 }
@@ -481,7 +493,6 @@ img {
 }
 
 .summary-card strong {
-  font-family: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
   font-size: clamp(2rem, 4vw, 3rem);
   line-height: 1;
   font-weight: 500;
@@ -629,7 +640,6 @@ img {
 
 .current-book h3 {
   margin: 8px 0 6px;
-  font-family: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
   font-size: 18px;
   font-weight: 500;
   line-height: 1.45;
@@ -716,7 +726,6 @@ img {
 .bookshelf-copy h4,
 .detail-copy h2 {
   margin: 0;
-  font-family: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
   font-size: 15px;
   font-weight: 600;
   line-height: 1.45;
@@ -884,7 +893,6 @@ img {
 .results-heading strong {
   margin-right: 4px;
   color: var(--ink);
-  font-family: Georgia, "Yu Mincho", serif;
   font-size: 26px;
   font-weight: 500;
 }
@@ -1017,7 +1025,6 @@ img {
 
 .book-copy h3 {
   margin: 0;
-  font-family: Georgia, "Yu Mincho", "Hiragino Mincho ProN", serif;
   font-size: 15px;
   font-weight: 600;
   line-height: 1.45;
@@ -1142,7 +1149,8 @@ img {
 .scan-panel {
   display: grid;
   gap: 18px;
-  max-width: 780px;
+  width: min(100%, 560px);
+  max-width: 560px;
   margin: 0 auto;
 }
 
@@ -1455,15 +1463,16 @@ img {
   }
 
   .mobile-tool-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 8px;
+    display: flex;
     align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .filter-button {
     min-height: 44px;
     padding: 0 10px;
+    flex: 0 0 auto;
   }
 
   .view-toggle button {
@@ -1473,6 +1482,8 @@ img {
   }
 
   .books-count {
+    order: -1;
+    margin-right: auto;
     white-space: nowrap;
   }
 
@@ -1493,7 +1504,6 @@ img {
   }
 
   .summary-strip-item strong {
-    font-family: Georgia, "Yu Mincho", serif;
     font-size: 1.55rem;
     line-height: 1;
   }
@@ -1663,13 +1673,20 @@ img {
   }
 
   .category-toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .category-search {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .category-summary {
-    justify-self: end;
+    margin-left: auto;
+    white-space: nowrap;
   }
 
   .category-table {
@@ -1977,17 +1994,16 @@ img {
 
   .mobile-tool-row {
     display: flex;
-    justify-content: space-between;
-    gap: 10px;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .filter-button {
     display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
     min-height: 44px;
-    flex: 1;
+    flex: 0 0 auto;
     padding: 0 12px;
     border: 1px solid var(--rule);
     border-radius: var(--radius);
@@ -2442,15 +2458,16 @@ img {
   }
 
   .mobile-tool-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 6px;
+    display: flex;
     align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .filter-button {
     min-height: 46px;
     padding: 0 12px;
+    flex: 0 0 auto;
   }
 
   .view-toggle button {
@@ -2459,11 +2476,13 @@ img {
   }
 
   .books-count {
-    grid-column: 1 / -1;
     margin: 0;
     color: var(--muted);
     font-size: 12px;
     line-height: 1.3;
+    order: -1;
+    margin-right: auto;
+    white-space: nowrap;
   }
 
   .results-heading,
@@ -2626,16 +2645,17 @@ img {
   }
 
   .category-toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px 10px;
+    display: flex;
     align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .category-count {
-    justify-self: end;
     color: var(--muted);
     font-size: 12px;
+    margin-left: auto;
+    white-space: nowrap;
   }
 
   .category-heading {
@@ -2648,8 +2668,8 @@ img {
   }
 
   .category-add-button {
-    grid-column: 2;
     min-height: 46px;
+    flex: 0 0 auto;
   }
 
   .category-table-head {
@@ -2778,9 +2798,10 @@ img {
 
   .detail-controls {
     display: grid;
-    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
-    gap: 16px;
+    grid-template-columns: minmax(280px, 320px) 148px;
+    gap: 14px;
     align-items: end;
+    justify-content: start;
   }
 
   .detail-danger-zone {
@@ -2789,7 +2810,7 @@ img {
   }
 
   .scan-panel {
-    max-width: 580px;
+    max-width: 560px;
     margin: 0 auto;
   }
 }
