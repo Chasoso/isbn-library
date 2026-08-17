@@ -28,7 +28,7 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
           setNotFound(true);
-          setMessage("本が見つかりませんでした。");
+          setMessage("書籍が見つかりませんでした。");
         } else {
           setMessage("書籍情報の読み込みに失敗しました。");
         }
@@ -83,12 +83,12 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
           </p>
         ) : null}
         {book ? (
-          <>
-            <div className="detail-layout">
-              <div className="detail-cover-panel">
-                <CoverArt book={book} large className="detail-cover" />
-              </div>
+          <div className="detail-layout">
+            <div className="detail-cover-panel">
+              <CoverArt book={book} large className="detail-cover" />
+            </div>
 
+            <div className="detail-info-column">
               <div className="detail-summary">
                 <div className="chip-row">
                   <TagChip>{book.categoryName}</TagChip>
@@ -116,40 +116,40 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
                   </div>
                 </dl>
               </div>
-            </div>
 
-            <div className="detail-controls">
-              <div className="classification-grid detail-status-grid">
-                <label>
-                  <span>読書ステータス</span>
-                  <select
-                    value={readingStatus}
-                    onChange={(event) => setReadingStatus(event.target.value as ReadingStatus)}
-                    disabled={savingStatus}
-                  >
-                    {readingStatuses.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <div className="detail-controls">
+                <div className="classification-grid detail-status-grid">
+                  <label>
+                    <span>読書ステータス</span>
+                    <select
+                      value={readingStatus}
+                      onChange={(event) => setReadingStatus(event.target.value as ReadingStatus)}
+                      disabled={savingStatus}
+                    >
+                      {readingStatuses.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <button
+                  className="primary-button detail-save-button"
+                  onClick={() => void handleUpdateReadingStatus()}
+                  disabled={savingStatus}
+                >
+                  {savingStatus ? "保存中..." : "保存"}
+                </button>
               </div>
-              <button
-                className="primary-button detail-save-button"
-                onClick={() => void handleUpdateReadingStatus()}
-                disabled={savingStatus}
-              >
-                {savingStatus ? "保存中..." : "保存"}
-              </button>
-            </div>
 
-            <div className="detail-danger-zone">
-              <button className="ghost-button danger-button" onClick={() => void handleDelete()}>
-                削除
-              </button>
+              <div className="detail-danger-zone">
+                <button className="ghost-button danger-button" onClick={() => void handleDelete()}>
+                  削除
+                </button>
+              </div>
             </div>
-          </>
+          </div>
         ) : null}
       </section>
     </AppLayout>

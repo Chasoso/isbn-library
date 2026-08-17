@@ -50,20 +50,22 @@ export function HomePage({ authState }: { authState: AuthState }) {
   return (
     <AppLayout title="ホーム">
       <section className="panel dashboard-hero">
-        <div className="summary-strip" aria-label="蔵書の概要">
-          <article className="summary-strip-item tone-teal">
-            <div className="summary-strip-head">
-              <p>総冊数</p>
+        <dl className="shelf-summary" aria-label="本棚の概要">
+          <div className="shelf-summary__item">
+            <dt>総冊数</dt>
+            <dd>
               <strong>{books.length}</strong>
-            </div>
-          </article>
-          <article className="summary-strip-item tone-sky">
-            <div className="summary-strip-head">
-              <p>未読数</p>
+              <span>冊</span>
+            </dd>
+          </div>
+          <div className="shelf-summary__item">
+            <dt>未読</dt>
+            <dd>
               <strong>{unreadCount}</strong>
-            </div>
-          </article>
-        </div>
+              <span>冊</span>
+            </dd>
+          </div>
+        </dl>
       </section>
 
       <section className="panel search-panel home-search-panel">
