@@ -71,7 +71,7 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <AppLayout title="書籍詳細" subtitle={book?.title ?? "選択した本の詳細を確認します"}>
+    <AppLayout title="書籍詳細" subtitle={book?.title ?? "選択した書籍の詳細を表示します。"}>
       <section className="panel detail-panel">
         {loading ? <p className="empty-copy">書籍情報を読み込み中です...</p> : null}
         {message ? <p className="subtle">{message}</p> : null}
@@ -93,11 +93,8 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
                   <TagChip>{book.readingStatus}</TagChip>
                 </div>
                 <h2>{book.title}</h2>
+                <p className="author-line">{book.author || "著者不明"}</p>
                 <dl className="detail-meta-list">
-                  <div>
-                    <dt>著者</dt>
-                    <dd>{book.author || "-"}</dd>
-                  </div>
                   <div>
                     <dt>出版社</dt>
                     <dd>{book.publisher || "-"}</dd>
@@ -109,10 +106,6 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
                   <div>
                     <dt>ISBN</dt>
                     <dd>{book.isbn}</dd>
-                  </div>
-                  <div>
-                    <dt>読書ステータス</dt>
-                    <dd>{book.readingStatus}</dd>
                   </div>
                   <div>
                     <dt>登録日</dt>
@@ -148,7 +141,7 @@ export function BookDetailPage({ accessToken }: { accessToken: string }) {
                   {savingStatus ? "保存中..." : "ステータスを保存"}
                 </button>
                 <button className="ghost-button danger-button" onClick={() => void handleDelete()}>
-                  削除する
+                  削除
                 </button>
               </div>
             </div>

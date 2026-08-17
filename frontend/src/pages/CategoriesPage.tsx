@@ -30,14 +30,11 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
     const load = async (): Promise<void> => {
       setLoading(true);
       try {
-        const [categoryResult, bookResult] = await Promise.all([
-          getCategories(accessToken),
-          getBooks(accessToken),
-        ]);
+        const [categoryResult, bookResult] = await Promise.all([getCategories(accessToken), getBooks(accessToken)]);
         setCategories(categoryResult.items);
         setBooks(bookResult.items);
       } catch {
-        setMessage("カテゴリを読み込めませんでした。");
+        setMessage("カテゴリの読み込みに失敗しました。");
       } finally {
         setLoading(false);
       }
@@ -96,9 +93,7 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
           name: editor.name.trim(),
           nameEn: editor.nameEn.trim(),
         });
-        setCategories((current) =>
-          [...current, created].sort((left, right) => left.sortOrder - right.sortOrder),
-        );
+        setCategories((current) => [...current, created].sort((left, right) => left.sortOrder - right.sortOrder));
         setMessage("カテゴリを追加しました。");
       } else {
         const updated = await updateCategory(accessToken, editor.categoryId, {
@@ -126,12 +121,12 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <AppLayout title="カテゴリ管理" subtitle="棚のラベルを編集して、分類を整えます。">
+    <AppLayout title="カテゴリ管理" subtitle="棚のラベルを整えて、分類を見やすくします。">
       <section className="panel categories-panel">
-        <div className="section-heading">
+        <div className="section-heading category-heading">
           <div>
             <p className="section-label">CATEGORY LIST</p>
-            <h3>棚のラベルを編集する</h3>
+            <h3>カテゴリを編集する</h3>
           </div>
           <button className="primary-button" type="button" onClick={openCreate}>
             ＋ 追加
@@ -184,7 +179,7 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
             ) : (
               <div className="empty-state">
                 <h4>カテゴリが見つかりませんでした</h4>
-                <p>検索語を変えるか、新しいカテゴリを追加してください。</p>
+                <p>検索条件を変えるか、新しいカテゴリを追加してください。</p>
               </div>
             )}
           </div>
@@ -203,9 +198,7 @@ export function CategoriesPage({ accessToken }: { accessToken: string }) {
             <div className="sheet-heading">
               <div>
                 <p className="eyebrow">{editor.mode === "create" ? "NEW CATEGORY" : "EDIT CATEGORY"}</p>
-                <h2 id="category-editor-title">
-                  {editor.mode === "create" ? "カテゴリを追加" : "カテゴリを編集"}
-                </h2>
+                <h2 id="category-editor-title">{editor.mode === "create" ? "カテゴリを追加" : "カテゴリを編集"}</h2>
               </div>
               <button type="button" className="icon-button" onClick={() => setEditor(null)} aria-label="閉じる">
                 ×

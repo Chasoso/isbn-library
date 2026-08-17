@@ -6,7 +6,7 @@ import { CoverFlowShelf } from "../components/CoverFlowShelf";
 import { getBooks, getCategories } from "../lib/api";
 import { readingStatuses } from "../readingStatus";
 import type { Book, CategoryDefinition } from "../types";
-import { sortBooks } from "../view-helpers";
+import { sortBooks, SearchBar } from "../view-helpers";
 
 const sortOptions = [
   { value: "newest", label: "新しい順" },
@@ -18,10 +18,24 @@ const sortOptions = [
 type SortOption = (typeof sortOptions)[number]["value"];
 type ViewMode = "grid" | "list";
 
-const initialView: ViewMode =
-  typeof window !== "undefined" && window.matchMedia("(max-width: 719px)").matches ? "list" : "grid";
+function useCompactLayout(): boolean {
+  const [compact, setCompact] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 480px)").matches : false,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 480px)");
+    const update = () => setCompact(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  return compact;
+}
 
 export function BooksPage({ accessToken }: { accessToken: string }) {
+  const compact = useCompactLayout();
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
@@ -39,7 +53,11 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
   const [categoryFilter, setCategoryFilter] = useState(categoryId);
   const [readingStatusFilter, setReadingStatusFilter] = useState(readingStatus);
   const [sortValue, setSortValue] = useState<SortOption>(sort);
-  const [view, setView] = useState<ViewMode>(initialView);
+  const [view, setView] = useState<ViewMode>(
+    compact || (typeof window !== "undefined" && window.matchMedia("(max-width: 719px)").matches)
+      ? "list"
+      : "grid",
+  );
   const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
@@ -95,9 +113,7 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
   useEffect(() => {
     const handle = window.setTimeout(() => {
       const nextSearch = buildFilterSearch();
-      const currentSearch = location.search.startsWith("?")
-        ? location.search.slice(1)
-        : location.search;
+      const currentSearch = location.search.startsWith("?") ? location.search.slice(1) : location.search;
       if (nextSearch === currentSearch) {
         return;
       }
@@ -105,15 +121,7 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
     }, 180);
 
     return () => window.clearTimeout(handle);
-  }, [
-    searchText,
-    bookFormatFilter,
-    categoryFilter,
-    readingStatusFilter,
-    sortValue,
-    location.search,
-    navigate,
-  ]);
+  }, [searchText, bookFormatFilter, categoryFilter, readingStatusFilter, sortValue, location.search, navigate]);
 
   const activeChips = [
     sortValue !== "newest" ? sortOptions.find((item) => item.value === sortValue)?.label : "",
@@ -136,19 +144,32 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <AppLayout title="蔵書一覧" subtitle="検索、絞り込み、並び替えをひとつの画面で。">
+    <AppLayout title="蔵書一覧" subtitle="検索、絞り込み、並び替えをひとつの画面で行えます。">
       <section className="panel library-tools">
-        <div className="search-box">
-          <span aria-hidden="true">⌕</span>
-          <input
+        <div className="books-search-strip">
+          <SearchBar
             value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
+            onChange={setSearchText}
             placeholder="タイトル・著者で検索"
-            aria-label="タイトル・著者で検索"
+            submitLabel="検索"
+            onSubmit={applyFilters}
           />
-          <button type="button" onClick={applyFilters}>
-            検索
-          </button>
+
+          <div className="mobile-tool-row">
+            <button className="filter-button" type="button" onClick={() => setFilterOpen(true)}>
+              絞り込み
+              {activeChips.length > 0 ? <b>{activeChips.length}</b> : null}
+            </button>
+            <div className="view-toggle" role="group" aria-label="表示切り替え">
+              <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")}>
+                グリッド
+              </button>
+              <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")}>
+                リスト
+              </button>
+            </div>
+            <p className="books-count">{books.length}冊</p>
+          </div>
         </div>
 
         <div className="desktop-filters">
@@ -202,21 +223,6 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
           </div>
         </div>
 
-        <div className="mobile-tool-row">
-          <button className="filter-button" type="button" onClick={() => setFilterOpen(true)}>
-            絞り込み
-            {activeChips.length > 0 ? <b>{activeChips.length}</b> : null}
-          </button>
-          <div className="view-toggle">
-            <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")}>
-              グリッド
-            </button>
-            <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")}>
-              リスト
-            </button>
-          </div>
-        </div>
-
         {activeChips.length > 0 ? (
           <div className="active-chips">
             {activeChips.map((chip) => (
@@ -230,25 +236,27 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
       </section>
 
       <section className="panel results-section">
-        <div className="results-heading">
-          <p>
-            <strong>{books.length}</strong>冊
-          </p>
-          <div className="desktop-view-toggle view-toggle">
-            <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")}>
-              グリッド
-            </button>
-            <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")}>
-              リスト
-            </button>
+        {!compact ? (
+          <div className="results-heading">
+            <p>
+              <strong>{books.length}</strong>冊
+            </p>
+            <div className="desktop-view-toggle view-toggle">
+              <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")}>
+                グリッド
+              </button>
+              <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")}>
+                リスト
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {loading ? <div className="empty-state">蔵書を読み込み中です...</div> : null}
         {!loading && books.length === 0 ? (
           <div className="empty-state">
             <h3>本が見つかりませんでした</h3>
-            <p>検索語か絞り込み条件を変えてみてください。</p>
+            <p>検索や絞り込み条件を見直してください。</p>
           </div>
         ) : null}
         {!loading && books.length > 0 ? <CoverFlowShelf books={books} layout={view} /> : null}
@@ -327,7 +335,7 @@ export function BooksPage({ accessToken }: { accessToken: string }) {
             </div>
             <div className="sheet-actions">
               <button type="button" className="ghost-button" onClick={resetFilters}>
-                リセット
+                解除
               </button>
               <button type="button" className="primary-button" onClick={() => setFilterOpen(false)}>
                 {books.length}冊を表示

@@ -4,9 +4,25 @@ import type { Book, BookLookupResult } from "./types";
 
 export function SummaryCards({
   items,
+  compact = false,
 }: {
   items: Array<{ label: string; value: string; caption: string; tone: "teal" | "sky" | "amber" }>;
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <div className="summary-strip" aria-label="蔵書サマリー">
+        {items.map((item) => (
+          <article key={item.label} className={`summary-strip-item tone-${item.tone}`}>
+            <p>{item.label}</p>
+            <strong>{item.value}</strong>
+            <span>{item.caption}</span>
+          </article>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="summary-grid">
       {items.map((item) => (
@@ -49,13 +65,31 @@ export function SearchBar({
         aria-label={placeholder}
       />
       <button type="submit" className="inline-search-action">
-        {submitLabel}
+        <span className="inline-search-action-label">{submitLabel}</span>
       </button>
     </form>
   );
 }
 
-export function RecentBookCard({ book }: { book: Book }) {
+export function RecentBookCard({ book, compact = false }: { book: Book; compact?: boolean }) {
+  if (compact) {
+    return (
+      <Link to={`/books/${book.isbn}`} className="recent-book-card recent-book-card-compact">
+        <div className="recent-cover-wrap">
+          <CoverArt book={book} className="recent-cover" />
+        </div>
+        <div className="recent-card-copy">
+          <p className="recent-meta">
+            {book.readingStatus} / {book.bookFormat}
+          </p>
+          <h4 title={book.title}>{book.title || "題名なし"}</h4>
+          <p className="author-line">{book.author || "著者不明"}</p>
+          <p className="subtle recent-card-footer">{book.categoryName}</p>
+        </div>
+      </Link>
+    );
+  }
+
   return (
     <Link to={`/books/${book.isbn}`} className="recent-book-card">
       <div className="recent-cover-wrap">
@@ -67,8 +101,8 @@ export function RecentBookCard({ book }: { book: Book }) {
           <TagChip tone="outline">{book.bookFormat}</TagChip>
           <TagChip>{book.readingStatus}</TagChip>
         </div>
-        <h4 title={book.title}>{book.title || "無題"}</h4>
-        <p className="author-line">{book.author || "著者未設定"}</p>
+        <h4 title={book.title}>{book.title || "題名なし"}</h4>
+        <p className="author-line">{book.author || "著者不明"}</p>
         <p className="subtle">{formatDate(book.createdAt)}</p>
       </div>
     </Link>
@@ -104,7 +138,7 @@ export function CoverArt({
       <img
         className={`cover-art ${large ? "large" : ""} ${className}`.trim()}
         src={book.coverImageUrl}
-        alt={book.title || "Book cover"}
+        alt={book.title || "書影"}
         loading="lazy"
         onError={() => setImageFailed(true)}
       />
@@ -116,7 +150,7 @@ export function CoverArt({
       className={`cover-fallback ${large ? "large" : ""} ${className}`.trim()}
       style={{ background: coverAccent(book.isbn) }}
     >
-      <span>{book.title ? book.title.slice(0, 24) : "表紙なし"}</span>
+      <span>{book.title ? book.title.slice(0, 24) : "書影なし"}</span>
     </div>
   );
 }
@@ -178,13 +212,7 @@ export function isInCurrentMonth(value: string): boolean {
 }
 
 function coverAccent(seed: string): string {
-  const palettes = [
-    "#234b60",
-    "#15606a",
-    "#9f7640",
-    "#5f7f8d",
-    "#75606d",
-  ];
+  const palettes = ["#234b60", "#15606a", "#9f7640", "#5f7f8d", "#75606d"];
   const total = [...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0);
 
   return palettes[total % palettes.length];

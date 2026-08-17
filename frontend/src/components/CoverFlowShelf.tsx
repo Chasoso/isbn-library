@@ -20,13 +20,19 @@ export function CoverFlowShelf({ books, layout = "grid" }: CoverFlowShelfProps) 
           >
             <CoverArt book={book} className="bookshelf-cover" />
             <div className="bookshelf-copy">
-              <div className="chip-row">
-                <TagChip>{book.readingStatus}</TagChip>
-                <TagChip tone="outline">{book.bookFormat}</TagChip>
-              </div>
-              <h4 title={book.title}>{book.title || "無題"}</h4>
-              <p>{book.author || "著者未設定"}</p>
-              <small>{book.categoryName}</small>
+              {layout === "list" ? (
+                <p className="bookshelf-meta">
+                  {book.readingStatus} / {book.bookFormat} / {book.categoryName}
+                </p>
+              ) : (
+                <div className="chip-row">
+                  <TagChip>{book.readingStatus}</TagChip>
+                  <TagChip tone="outline">{book.bookFormat}</TagChip>
+                </div>
+              )}
+              <h4 title={book.title}>{book.title || "題名なし"}</h4>
+              <p>{book.author || "著者不明"}</p>
+              {layout === "grid" ? <small>{book.categoryName}</small> : null}
             </div>
           </Link>
         ))}

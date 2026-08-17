@@ -35,12 +35,7 @@ function ShellNavItem({
   return (
     <Link
       to={to}
-      className={[
-        mobile ? "bottom-nav-item" : "nav-tab",
-        active ? "active" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={[mobile ? "bottom-nav-item" : "nav-tab", active ? "active" : ""].filter(Boolean).join(" ")}
       aria-current={active ? "page" : undefined}
     >
       {label}
@@ -60,9 +55,9 @@ export function ProtectedLayout({
       <div className="app-shell auth-screen">
         <div className="auth-card">
           <p className="kicker">ISBN LIBRARY</p>
-          <h1>サインインして本棚を開く</h1>
+          <h1>サインインして蔵書を開く</h1>
           <p className="auth-copy">
-            Cognito でサインインすると、蔵書の閲覧、登録、検索が使えます。
+            Cognito でサインインすると、蔵書の確認、登録、検索、編集を行えます。
           </p>
           <button className="primary-button full" onClick={() => void signIn()}>
             サインイン
@@ -131,18 +126,12 @@ export function AppLayout({
   return (
     <div className="app-shell editorial-shell">
       <header className="app-header">
-        <div className="brand-block">
-          <Link to="/" className="brand-wordmark" aria-label="ISBN Library home">
-            ISBN LIBRARY
+        <div className="header-topline">
+          <Link to="/" className="brand-wordmark" aria-label="ISBN Library ホーム">
+            <span className="brand-wordmark-main">ISBN LIBRARY</span>
+            <span className="brand-wordmark-sub">EDITED SHELF</span>
           </Link>
-          <div className="brand-copy">
-            <p className="kicker">EDITED SHELF</p>
-            <h1>{title}</h1>
-            {subtitle ? <p className="subtle">{subtitle}</p> : null}
-          </div>
-        </div>
 
-        <div className="header-actions">
           <nav className="nav-tabs desktop-nav" aria-label="メインナビゲーション">
             <ShellNavItem to="/" label="ホーム" active={activeSection === "home"} />
             <ShellNavItem to="/books" label="蔵書一覧" active={activeSection === "books"} />
@@ -166,6 +155,11 @@ export function AppLayout({
               <strong>{accountLabel}</strong>
             </span>
           </button>
+        </div>
+
+        <div className="header-copy">
+          <h1>{title}</h1>
+          {subtitle ? <p className="header-subtitle">{subtitle}</p> : null}
         </div>
       </header>
 
@@ -238,7 +232,7 @@ export function AuthCallbackPage({
         });
         navigate("/", { replace: true });
       } catch {
-        setError("サインインの確認に失敗しました。");
+        setError("サインインの処理に失敗しました。");
       }
     };
 
@@ -261,8 +255,12 @@ export function AuthCallbackPage({
     <div className="app-shell loading-screen">
       <div className="loading-panel">
         <p className="kicker">COGNITO CALLBACK</p>
-        <h1>サインインを確認しています</h1>
-        <p className="subtle">{error ?? "認証処理が完了するまでお待ちください。"}</p>
+        <h1>{error ? "サインインできませんでした" : "サインインを完了しています"}</h1>
+        <p className="auth-copy">
+          {error
+            ? error
+            : "認証結果を受け取って、蔵書画面へ戻っています。"}
+        </p>
       </div>
     </div>
   );

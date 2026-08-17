@@ -10,7 +10,7 @@ test.describe("frontend editorial bookshelf visuals", () => {
   test("home page keeps the editorial layout responsive", async ({ page }, testInfo) => {
     await page.goto("/");
     await expect(page.locator(".app-header")).toBeVisible();
-    await expect(page.locator(".summary-grid")).toBeVisible();
+    await expect(page.locator(".summary-grid, .summary-strip")).toBeVisible();
     await expect(page.locator(".search-bar")).toBeVisible();
     await expect(page.locator(".recent-book-card").first()).toBeVisible();
     await assertNoHorizontalScroll(page);
@@ -87,10 +87,13 @@ test.describe("frontend editorial bookshelf visuals", () => {
   test("scan page keeps the camera-first layout", async ({ page }, testInfo) => {
     await page.goto("/scan");
     await expect(page.locator(".scan-panel")).toBeVisible();
-    await expect(page.locator(".scanner-shell")).toBeVisible();
     await expect(page.locator(".scan-tips")).toBeVisible();
     await expect(page.locator(".scan-manual")).toBeVisible();
     await assertNoHorizontalScroll(page);
+
+    if (await page.locator(".scanner-shell").count()) {
+      await expect(page.locator(".scanner-shell")).toBeVisible();
+    }
 
     await page.screenshot({
       path: testInfo.outputPath("scan-editorial.png"),
