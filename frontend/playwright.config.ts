@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const useExistingServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === "1";
-const useHtmlReport = process.env.PLAYWRIGHT_SKIP_HTML_REPORT !== "1";
+const useHtmlReport = process.env.PLAYWRIGHT_HTML_REPORT === "1";
 
 export default defineConfig({
   testDir: "./tests",

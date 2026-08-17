@@ -10,7 +10,7 @@ test.describe("frontend editorial bookshelf visuals", () => {
   test("home page keeps the editorial layout responsive", async ({ page }, testInfo) => {
     await page.goto("/");
     await expect(page.locator(".app-header")).toBeVisible();
-    await expect(page.locator(".summary-grid, .summary-strip")).toBeVisible();
+    await expect(page.locator(".shelf-summary")).toBeVisible();
     await expect(page.locator(".search-bar")).toBeVisible();
     await expect(page.locator(".recent-book-card").first()).toBeVisible();
     await assertNoHorizontalScroll(page);
@@ -21,14 +21,9 @@ test.describe("frontend editorial bookshelf visuals", () => {
     } else {
       await expect(page.locator(".desktop-nav")).toBeVisible();
     }
-
-    await page.screenshot({
-      path: testInfo.outputPath("home-editorial.png"),
-      fullPage: true,
-    });
   });
 
-  test("books page keeps search and filters accessible", async ({ page }, testInfo) => {
+  test("books page keeps search and filters accessible", async ({ page }) => {
     await page.goto("/books");
     await expect(page.locator(".bookshelf-shell")).toBeVisible();
     await assertNoHorizontalScroll(page);
@@ -44,28 +39,18 @@ test.describe("frontend editorial bookshelf visuals", () => {
 
     await expect(page.locator(".bookshelf-book").first()).toBeVisible();
     await expect(page.locator(".bookshelf-selection")).toHaveCount(0);
-
-    await page.screenshot({
-      path: testInfo.outputPath("bookshelf-editorial.png"),
-      fullPage: true,
-    });
   });
 
-  test("book detail page keeps the reading controls and metadata visible", async ({ page }, testInfo) => {
+  test("book detail page keeps the reading controls and metadata visible", async ({ page }) => {
     await page.goto("/books/9784860648114");
     await expect(page.locator(".detail-layout")).toBeVisible();
     await expect(page.locator(".detail-controls")).toBeVisible();
     await expect(page.locator(".detail-save-button")).toBeVisible();
     await expect(page.locator(".detail-danger-zone")).toBeVisible();
     await assertNoHorizontalScroll(page);
-
-    await page.screenshot({
-      path: testInfo.outputPath("book-detail-editorial.png"),
-      fullPage: true,
-    });
   });
 
-  test("categories page uses a compact table with modal editing", async ({ page }, testInfo) => {
+  test("categories page uses a compact table with modal editing", async ({ page }) => {
     await page.goto("/categories");
     await expect(page.locator(".category-table")).toBeVisible();
     await expect(page.getByRole("button", { name: "＋追加" })).toBeVisible();
@@ -78,14 +63,9 @@ test.describe("frontend editorial bookshelf visuals", () => {
     await page.getByRole("button", { name: /を編集/ }).first().click();
     await expect(page.locator(".edit-sheet")).toBeVisible();
     await page.getByRole("button", { name: "閉じる" }).click();
-
-    await page.screenshot({
-      path: testInfo.outputPath("categories-editorial.png"),
-      fullPage: true,
-    });
   });
 
-  test("scan page keeps the camera-first layout", async ({ page }, testInfo) => {
+  test("scan page keeps the camera-first layout", async ({ page }) => {
     await page.goto("/scan");
     await expect(page.locator(".scan-panel")).toBeVisible();
     await expect(page.locator(".scan-message")).toBeVisible();
@@ -95,10 +75,5 @@ test.describe("frontend editorial bookshelf visuals", () => {
     if (await page.locator(".scanner-shell").count()) {
       await expect(page.locator(".scanner-shell")).toBeVisible();
     }
-
-    await page.screenshot({
-      path: testInfo.outputPath("scan-editorial.png"),
-      fullPage: true,
-    });
   });
 });
