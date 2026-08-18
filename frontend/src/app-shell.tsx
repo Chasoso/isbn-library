@@ -43,6 +43,52 @@ function ShellNavItem({
   );
 }
 
+function LoginScreen() {
+  const [loginPending, setLoginPending] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const handleLogin = async (): Promise<void> => {
+    if (loginPending) {
+      return;
+    }
+
+    setLoginPending(true);
+    setLoginError(null);
+
+    try {
+      await signIn();
+    } catch {
+      setLoginError("ログインできませんでした。時間をおいて再度お試しください。");
+    } finally {
+      setLoginPending(false);
+    }
+  };
+
+  return (
+    <main className="app-shell login-screen">
+      <section className="login-card" aria-labelledby="login-title" aria-busy={loginPending}>
+        <p className="login-brand">ISBN LIBRARY</p>
+        <h1 id="login-title" className="login-title">
+          ログイン
+        </h1>
+        <button
+          type="button"
+          className="primary-button full login-button"
+          onClick={() => void handleLogin()}
+          disabled={loginPending}
+        >
+          {loginPending ? "ログイン中..." : "ログイン"}
+        </button>
+        {loginError ? (
+          <p className="login-error" role="alert">
+            {loginError}
+          </p>
+        ) : null}
+      </section>
+    </main>
+  );
+}
+
 export function ProtectedLayout({
   authState,
   children,
@@ -51,18 +97,7 @@ export function ProtectedLayout({
   children: ReactNode;
 }) {
   if (!authState.isAuthenticated) {
-    return (
-      <div className="app-shell auth-screen">
-        <div className="auth-card">
-          <p className="kicker">ISBN LIBRARY</p>
-          <h1>サインインして蔵書を開く</h1>
-          <p className="auth-copy">Cognito でサインインすると、蔵書の確認、登録、検索、編集を行えます。</p>
-          <button className="primary-button full" onClick={() => void signIn()}>
-            サインイン
-          </button>
-        </div>
-      </div>
-    );
+    return <LoginScreen />;
   }
 
   return <>{children}</>;
@@ -226,7 +261,7 @@ export function AuthCallbackPage({
         });
         navigate("/", { replace: true });
       } catch {
-        setError("サインイン処理に失敗しました。");
+        setError("ログイン処理に失敗しました。");
       }
     };
 
@@ -246,11 +281,9 @@ export function AuthCallbackPage({
   return (
     <div className="app-shell loading-screen">
       <div className="loading-panel">
-        <p className="kicker">COGNITO CALLBACK</p>
-        <h1>{error ? "サインインできませんでした" : "サインインを確認しています"}</h1>
-        <p className="auth-copy">
-          {error ? error : "認証情報を確認しています。しばらくお待ちください。"}
-        </p>
+        <p className="kicker">LOGIN CALLBACK</p>
+        <h1>{error ? "ログインできませんでした" : "ログインを確認しています"}</h1>
+        <p className="auth-copy">{error ? error : "しばらくお待ちください。"}</p>
       </div>
     </div>
   );

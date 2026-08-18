@@ -377,6 +377,55 @@ img {
   margin-bottom: 18px;
 }
 
+.login-screen {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px 16px;
+  background: var(--paper);
+}
+
+.login-card {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 400px);
+  padding: 24px 22px 22px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.login-brand {
+  margin: 0;
+  color: #71828a;
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+.login-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 28px;
+  line-height: 1.3;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0;
+}
+
+.login-button {
+  width: 100%;
+}
+
+.login-error {
+  margin: 2px 0 0;
+  color: #9f3f4c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .primary-button,
 .primary-pill,
 .inline-search-action,
@@ -3488,6 +3537,22 @@ img {
 }
 
 @media (max-width: 719px) {
+  .login-card {
+    width: min(100%, 327px);
+    padding: 22px 20px 20px;
+    gap: 10px;
+  }
+
+  .login-brand {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+  }
+
+  .login-title {
+    font-size: 24px;
+    line-height: 1.25;
+  }
+
   .header-topline {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;

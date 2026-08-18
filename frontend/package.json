@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "test:e2e": "node scripts/test-e2e.mjs",
     "test:e2e:update": "node scripts/test-e2e.mjs",
+    "test:login": "node scripts/test-login.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs"
   },
   "dependencies": {
