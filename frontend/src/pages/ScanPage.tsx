@@ -39,6 +39,12 @@ export function ScanPage() {
     let active = true;
     let detected = false;
 
+    const setUnavailable = (nextMessage: string): void => {
+      setCameraReady(false);
+      setCameraUnavailable(true);
+      setMessage(nextMessage);
+    };
+
     const onDetected = async (text: string): Promise<void> => {
       if (detected) return;
 
@@ -61,52 +67,35 @@ export function ScanPage() {
       setCameraUnavailable(false);
       setMessage("バーコードを中央に合わせてください。");
 
-      if (!videoRef.current) {
-        setCameraUnavailable(true);
-        setMessage("この環境ではカメラを利用できません。");
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setUnavailable("この環境ではカメラを利用できません。");
+        return;
+      }
+
+      const videoElement = videoRef.current;
+      if (!videoElement) {
+        setUnavailable("この環境ではカメラを利用できません。");
         return;
       }
 
       try {
-        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-        const preferredDevice =
-          devices.find((device) => /back|rear|environment|背面/i.test(device.label)) ?? devices[0];
+        const controls = await reader.decodeFromVideoDevice(undefined, videoElement, (result, error) => {
+          if (result) {
+            void onDetected(result.getText());
+            return;
+          }
 
-        if (!preferredDevice) {
-          setCameraUnavailable(true);
-          setMessage("この環境ではカメラを利用できません。");
-          return;
-        }
-
-        const controls = await reader.decodeFromConstraints(
-          {
-            audio: false,
-            video: {
-              deviceId: { exact: preferredDevice.deviceId },
-              facingMode: "environment",
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-            },
-          },
-          videoRef.current,
-          (result, error) => {
-            if (result) {
-              void onDetected(result.getText());
-              return;
-            }
-
-            if (
-              error &&
-              !(
-                error instanceof NotFoundException ||
-                error instanceof ChecksumException ||
-                error instanceof FormatException
-              )
-            ) {
-              setMessage("読み取り中にエラーが発生しました。");
-            }
-          },
-        );
+          if (
+            error &&
+            !(
+              error instanceof NotFoundException ||
+              error instanceof ChecksumException ||
+              error instanceof FormatException
+            )
+          ) {
+            setMessage("読み取り中にエラーが発生しました。");
+          }
+        });
 
         controlsRef.current = controls;
         setCameraUnavailable(false);
@@ -114,17 +103,14 @@ export function ScanPage() {
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
         if (/Permission|denied|NotAllowed/i.test(detail)) {
-          setCameraUnavailable(true);
-          setMessage("カメラの使用が許可されていません。");
+          setUnavailable("カメラの使用が許可されていません。");
           return;
         }
         if (/secure|https|origin/i.test(detail)) {
-          setCameraUnavailable(true);
-          setMessage("カメラは HTTPS または localhost でのみ利用できます。");
+          setUnavailable("カメラは HTTPS または localhost でのみ利用できます。");
           return;
         }
-        setCameraUnavailable(true);
-        setMessage("この環境ではカメラを利用できません。");
+        setUnavailable("この環境ではカメラを利用できません。");
       }
     };
 
@@ -150,68 +136,40 @@ export function ScanPage() {
   return (
     <AppLayout title="スキャン">
       <section className="panel scan-panel">
-        {cameraUnavailable ? (
-          <div className="scan-manual scan-manual-first">
-            <label>
-              ISBN
-              <input
-                value={isbnInput}
-                onChange={(event) => setIsbnInput(event.target.value)}
-                placeholder="9784860648114"
-                inputMode="numeric"
-                aria-label="ISBN"
-              />
-            </label>
-            <div className="scan-manual-actions">
-              <button type="button" className="primary-button" onClick={submitManualIsbn}>
-                検索
-              </button>
-              <button
-                type="button"
-                className="ghost-button scan-retry-button"
-                onClick={() => setRetryCount((count) => count + 1)}
-              >
-                カメラを再試行
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {!cameraUnavailable && cameraReady ? (
+        {!cameraUnavailable ? (
           <div className="scanner-shell">
             <video ref={videoRef} className="scanner-video" muted playsInline autoPlay />
             <div className="scanner-overlay" aria-hidden="true">
               <div className="scanner-target" />
             </div>
+            {!cameraReady ? <p className="scan-loading">カメラを起動しています...</p> : null}
           </div>
         ) : null}
 
-        {!cameraUnavailable ? (
-          <div className="scan-manual">
-            <label>
-              ISBN
-              <input
-                value={isbnInput}
-                onChange={(event) => setIsbnInput(event.target.value)}
-                placeholder="9784860648114"
-                inputMode="numeric"
-                aria-label="ISBN"
-              />
-            </label>
-            <div className="scan-manual-actions">
-              <button type="button" className="primary-button" onClick={submitManualIsbn}>
-                検索
-              </button>
-              <button
-                type="button"
-                className="ghost-button scan-retry-button"
-                onClick={() => setRetryCount((count) => count + 1)}
-              >
-                カメラを再試行
-              </button>
-            </div>
+        <div className={cameraUnavailable ? "scan-manual scan-manual-first" : "scan-manual"}>
+          <label>
+            ISBN
+            <input
+              value={isbnInput}
+              onChange={(event) => setIsbnInput(event.target.value)}
+              placeholder="9784860648114"
+              inputMode="numeric"
+              aria-label="ISBN"
+            />
+          </label>
+          <div className="scan-manual-actions">
+            <button type="button" className="primary-button" onClick={submitManualIsbn}>
+              検索
+            </button>
+            <button
+              type="button"
+              className="ghost-button scan-retry-button"
+              onClick={() => setRetryCount((count) => count + 1)}
+            >
+              カメラを再試行
+            </button>
           </div>
-        ) : null}
+        </div>
 
         {message ? <p className="subtle scan-message">{message}</p> : null}
       </section>

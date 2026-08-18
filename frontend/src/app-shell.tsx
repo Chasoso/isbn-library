@@ -165,6 +165,7 @@ export function AppLayout({
           <nav className="nav-tabs desktop-nav" aria-label="メインナビゲーション">
             <ShellNavItem to="/" label="ホーム" active={activeSection === "home"} />
             <ShellNavItem to="/books" label="蔵書一覧" active={activeSection === "books"} />
+            <ShellNavItem to="/scan" label="スキャン" active={activeSection === "scan"} />
             <ShellNavItem to="/categories" label="カテゴリ管理" active={activeSection === "categories"} />
           </nav>
 
@@ -175,7 +176,7 @@ export function AppLayout({
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
             aria-controls="account-menu"
-            aria-label={`アカウント ${accountLabel}`}
+            aria-label={`アカウントメニューを開く ${accountLabel}`}
           >
             <span className="user-avatar" aria-hidden="true">
               {accountInitials}
@@ -261,7 +262,7 @@ export function AuthCallbackPage({
         });
         navigate("/", { replace: true });
       } catch {
-        setError("ログイン処理に失敗しました。");
+        setError("認証コールバックの処理に失敗しました。時間をおいて再度お試しください。");
       }
     };
 
@@ -282,7 +283,7 @@ export function AuthCallbackPage({
     <div className="app-shell loading-screen">
       <div className="loading-panel">
         <p className="kicker">LOGIN CALLBACK</p>
-        <h1>{error ? "ログインできませんでした" : "ログインを確認しています"}</h1>
+        <h1>{error ? "ログインできませんでした" : "ログイン中"}</h1>
         <p className="auth-copy">{error ? error : "しばらくお待ちください。"}</p>
       </div>
     </div>
