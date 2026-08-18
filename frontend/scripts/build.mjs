@@ -2,8 +2,7 @@ import { build } from "vite";
 import path from "node:path";
 import viteConfig from "../vite.config.js";
 
-const tempDir = process.env.TEMP ?? process.env.TMPDIR ?? process.cwd();
-const outDir = path.join(tempDir, "isbn-library-frontend-build");
+const outDir = path.join(process.cwd(), "dist");
 
 await build({
   ...viteConfig,
