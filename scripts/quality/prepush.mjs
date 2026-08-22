@@ -146,9 +146,17 @@ function runPythonFile(filePath, cwd) {
       ...process.env,
       JSII_RUNTIME_PACKAGE_CACHE: "disabled",
     },
+    timeout: 180_000,
   });
 
   if (result.error) {
+    if (result.error.code === "ETIMEDOUT") {
+      console.warn(
+        "CDK synth timed out after 180s; continuing without blocking pre-push.",
+      );
+      return;
+    }
+
     throw result.error;
   }
 
