@@ -24,6 +24,9 @@ deployment
 - `main` is the release and production branch.
 - Feature, fix, chore, and docs branches should target `develop`.
 - Do not open feature PRs directly against `main`.
+- CI runs on `pull_request` to `develop` and `main`.
+- Deploy runs only on `push` to `main`.
+- Manual workflow dispatch remains available for maintenance and debugging.
 
 ## Issue rules
 
@@ -53,4 +56,3 @@ The default quality gates are:
 - CDK synth when the local Python environment is ready
 
 The default gate stays no-network. External API calls should be mocked.
-
