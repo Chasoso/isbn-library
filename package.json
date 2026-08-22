@@ -1,0 +1,13 @@
+{
+  "name": "isbn-library",
+  "private": true,
+  "scripts": {
+    "prepare": "node scripts/setup-git-hooks.mjs",
+    "hooks:setup": "node scripts/setup-git-hooks.mjs",
+    "quality:secret-scan": "node scripts/quality/secret-scan.mjs --all",
+    "quality:precommit": "node scripts/quality/precommit.mjs",
+    "quality:prepush": "node scripts/quality/prepush.mjs",
+    "quality:ci": "npm run quality:prepush"
+  }
+}
+
