@@ -38,7 +38,7 @@ async function assertNoHorizontalScroll(page) {
 }
 
 async function runDesktopChecks(page) {
-  await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".app-header")).toBeVisible();
   await expect(page.locator(".shelf-summary")).toBeVisible();
   await expect(page.locator(".search-bar")).toBeVisible();
@@ -46,20 +46,20 @@ async function runDesktopChecks(page) {
   await assertNoHorizontalScroll(page);
   await expect(page.locator(".desktop-nav")).toBeVisible();
 
-  await page.goto(`${baseUrl}/books`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/books`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".bookshelf-shell")).toBeVisible();
   await expect(page.locator(".desktop-filters")).toBeVisible();
   await expect(page.locator(".bookshelf-book").first()).toBeVisible();
   await assertNoHorizontalScroll(page);
 
-  await page.goto(`${baseUrl}/books/9784860648114`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/books/9784860648114`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".detail-layout")).toBeVisible();
   await expect(page.locator(".detail-controls")).toBeVisible();
   await expect(page.locator(".detail-save-button")).toBeVisible();
   await expect(page.locator(".detail-danger-zone")).toBeVisible();
   await assertNoHorizontalScroll(page);
 
-  await page.goto(`${baseUrl}/categories`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/categories`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".category-table")).toBeVisible();
   await expect(page.getByRole("button", { name: "＋追加" })).toBeVisible();
   await page.getByRole("button", { name: "＋追加" }).click();
@@ -70,7 +70,7 @@ async function runDesktopChecks(page) {
   await page.getByRole("button", { name: "閉じる" }).click();
   await assertNoHorizontalScroll(page);
 
-  await page.goto(`${baseUrl}/scan`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/scan`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".scan-panel")).toBeVisible();
   await expect(page.locator(".scan-message")).toBeVisible();
   await expect(page.locator(".scan-manual")).toBeVisible();
@@ -81,7 +81,7 @@ async function runDesktopChecks(page) {
 }
 
 async function runMobileChecks(page) {
-  await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".app-header")).toBeVisible();
   await expect(page.locator(".shelf-summary")).toBeVisible();
   await expect(page.locator(".search-bar")).toBeVisible();
@@ -90,7 +90,7 @@ async function runMobileChecks(page) {
   await expect(page.locator(".desktop-nav")).toBeHidden();
   await assertNoHorizontalScroll(page);
 
-  await page.goto(`${baseUrl}/books`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/books`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".bookshelf-shell")).toBeVisible();
   await expect(page.locator(".mobile-tool-row")).toBeVisible();
   await page.locator(".filter-button").click();
@@ -99,19 +99,19 @@ async function runMobileChecks(page) {
   await expect(page.locator(".bookshelf-book").first()).toBeVisible();
   await assertNoHorizontalScroll(page);
 
-  await page.goto(`${baseUrl}/books/9784860648114`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/books/9784860648114`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".detail-layout")).toBeVisible();
   await expect(page.locator(".detail-controls")).toBeVisible();
   await expect(page.locator(".detail-save-button")).toBeVisible();
   await expect(page.locator(".detail-danger-zone")).toBeVisible();
   await assertNoHorizontalScroll(page);
 
-  await page.goto(`${baseUrl}/categories`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/categories`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".category-table")).toBeVisible();
   await expect(page.getByRole("button", { name: "＋追加" })).toBeVisible();
   await assertNoHorizontalScroll(page);
 
-  await page.goto(`${baseUrl}/scan`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/scan`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(".scan-panel")).toBeVisible();
   await expect(page.locator(".scan-message")).toBeVisible();
   await expect(page.locator(".scan-manual")).toBeVisible();
