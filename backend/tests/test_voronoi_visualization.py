@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import json
 
@@ -113,17 +114,23 @@ def test_category_voronoi_sample_generates_svg_artifact() -> None:
             assert y >= -0.01
             assert (x * x) + (y * y) <= (SEMICIRCLE_RADIUS + 0.25) ** 2
 
-    output_path = Path(__file__).resolve().parents[1] / "test-results" / "voronoi-sample.svg"
-    current_output_path = Path(__file__).resolve().parents[1] / "test-results" / "voronoi-current-sample.svg"
-    new_output_path = Path(__file__).resolve().parents[1] / "test-results" / "voronoi-new-sample.svg"
-    comparison_path = Path(__file__).resolve().parents[1] / "test-results" / "voronoi-strategy-comparison.json"
+    output_dir = Path(
+        os.environ.get(
+            "ISBN_LIBRARY_TEST_RESULTS_DIR",
+            str(Path(__file__).resolve().parents[1] / "test-results"),
+        )
+    )
+    output_path = output_dir / "voronoi-sample.svg"
+    current_output_path = output_dir / "voronoi-current-sample.svg"
+    new_output_path = output_dir / "voronoi-new-sample.svg"
+    comparison_path = output_dir / "voronoi-strategy-comparison.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(_render_svg(polygons), encoding="utf-8")
     current_output_path.write_text(
         _render_svg(_build_polygons_from_layout(categories, previous_polygons, previous_metrics)),
         encoding="utf-8",
     )
-    previous_output_path = Path(__file__).resolve().parents[1] / "test-results" / "voronoi-previous-stable-sample.svg"
+    previous_output_path = output_dir / "voronoi-previous-stable-sample.svg"
     previous_output_path.write_text(
         _render_svg(_build_polygons_from_layout(categories, previous_polygons, previous_metrics)),
         encoding="utf-8",

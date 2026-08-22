@@ -1,10 +1,6 @@
 name: Frontend Visual Tests
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
   workflow_dispatch:
 
 env:
@@ -38,6 +34,8 @@ jobs:
 
       - name: Run Playwright visual checks
         run: npm run test:e2e
+        env:
+          PLAYWRIGHT_HTML_REPORT: "1"
 
       - name: Upload Playwright screenshots
         uses: actions/upload-artifact@v6
