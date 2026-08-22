@@ -22,7 +22,6 @@ jobs:
     name: Quality Gates
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    if: github.ref == 'refs/heads/main'
     env:
       CI: true
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -95,7 +94,6 @@ jobs:
   frontend-build:
     runs-on: ubuntu-latest
     needs: quality-gates
-    if: github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: frontend
@@ -127,7 +125,6 @@ jobs:
   cdk-deploy:
     runs-on: ubuntu-latest
     needs: frontend-build
-    if: github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: infrastructure
@@ -187,7 +184,7 @@ jobs:
   amplify-deploy:
     runs-on: ubuntu-latest
     needs: cdk-deploy
-    if: github.ref == 'refs/heads/main' && vars.AMPLIFY_APP_ID != '' && vars.AMPLIFY_BRANCH_NAME != ''
+    if: ${{ vars.AMPLIFY_APP_ID != '' && vars.AMPLIFY_BRANCH_NAME != '' }}
     steps:
       - name: Mask AWS account identifiers
         run: |
