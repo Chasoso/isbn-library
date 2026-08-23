@@ -127,7 +127,11 @@ export const lookupBook = async (
   isbn: string,
 ): Promise<BookLookupResult> => {
   if (config.e2eDemoMode) {
-    return mockSession.lookupBook(isbn);
+    try {
+      return mockSession.lookupBook(isbn);
+    } catch {
+      throw new ApiError("Book metadata not found", 404);
+    }
   }
 
   return request<BookLookupResult>(`/lookup/${isbn}`, accessToken);

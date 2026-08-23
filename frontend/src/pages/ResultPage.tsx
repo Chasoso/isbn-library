@@ -22,6 +22,10 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
   const [bookFormat, setBookFormat] = useState<BookFormat>(defaultBookFormat);
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [readingStatus, setReadingStatus] = useState<ReadingStatus>(defaultReadingStatus);
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualAuthor, setManualAuthor] = useState("");
+  const [manualPublisher, setManualPublisher] = useState("");
+  const [titleError, setTitleError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadCategories = async (): Promise<void> => {
@@ -80,16 +84,24 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
   }, [accessToken, isbn]);
 
   const handleCreate = async (): Promise<void> => {
-    if (!book || registered) return;
+    if (registered || (!book && !lookupFailed)) return;
+
+    const title = book?.title ?? manualTitle.trim();
+    if (!title) {
+      setTitleError("Title is required.");
+      return;
+    }
+
+    setTitleError(null);
 
     try {
       await createBook(accessToken, {
         isbn,
-        title: book.title,
-        author: book.author,
-        publisher: book.publisher,
-        publishedDate: book.publishedDate,
-        coverImageUrl: book.coverImageUrl,
+        title,
+        author: book?.author ?? manualAuthor.trim(),
+        publisher: book?.publisher ?? manualPublisher.trim(),
+        publishedDate: book?.publishedDate ?? "",
+        coverImageUrl: book?.coverImageUrl ?? "",
         bookFormat,
         categoryId,
         readingStatus,
@@ -114,6 +126,92 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
         </h2>
         {message ? <p className="subtle">{message}</p> : null}
       </section>
+
+      {!loading && lookupFailed && !registered ? (
+        <section className="panel manual-registration-form" aria-labelledby="manual-registration-title">
+          <p className="section-label">MANUAL REGISTRATION</p>
+          <h3 id="manual-registration-title">Book metadata was not found</h3>
+          <p className="subtle">
+            ISBN: <strong>{isbn}</strong>
+            <br />
+            The book may not be registered with the external providers.
+          </p>
+          <div className="manual-fields">
+            <label>
+              <span>Title *</span>
+              <input
+                name="title"
+                value={manualTitle}
+                onChange={(event) => {
+                  setManualTitle(event.target.value);
+                  if (event.target.value.trim()) setTitleError(null);
+                }}
+                aria-invalid={Boolean(titleError)}
+                aria-describedby={titleError ? "manual-title-error" : undefined}
+                required
+              />
+              {titleError ? (
+                <span id="manual-title-error" className="field-error" role="alert">
+                  {titleError}
+                </span>
+              ) : null}
+            </label>
+            <label>
+              <span>Author</span>
+              <input name="author" value={manualAuthor} onChange={(event) => setManualAuthor(event.target.value)} />
+            </label>
+            <label>
+              <span>Publisher</span>
+              <input
+                name="publisher"
+                value={manualPublisher}
+                onChange={(event) => setManualPublisher(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="classification-grid">
+            <label>
+              <span>Book format</span>
+              <select value={bookFormat} onChange={(event) => setBookFormat(event.target.value as BookFormat)}>
+                {bookFormats.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Category</span>
+              <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+                {categories.map((item) => (
+                  <option key={item.categoryId} value={item.categoryId}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Reading status</span>
+              <select value={readingStatus} onChange={(event) => setReadingStatus(event.target.value as ReadingStatus)}>
+                {readingStatuses.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button
+            type="button"
+            className="primary-button"
+            data-testid="manual-register-button"
+            onClick={() => void handleCreate()}
+            disabled={categories.length === 0}
+          >
+            Register manually
+          </button>
+        </section>
+      ) : null}
 
       <section className="panel detail-panel">
         <div className="section-heading">
