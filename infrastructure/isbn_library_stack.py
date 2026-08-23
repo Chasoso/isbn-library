@@ -82,6 +82,8 @@ class IsbnLibraryStack(Stack):
             ["http://localhost:5173"],
         )
         google_books_api_key = os.getenv("GOOGLE_BOOKS_API_KEY", "")
+        rakuten_application_id = os.getenv("RAKUTEN_APPLICATION_ID", "")
+        rakuten_access_key = os.getenv("RAKUTEN_ACCESS_KEY", "")
         books_table_name = os.getenv("BOOKS_TABLE_NAME", "books")
         categories_table_name = os.getenv("CATEGORIES_TABLE_NAME", "book-category")
         google_wif_credential_config_parameter_name = os.getenv(
@@ -206,6 +208,8 @@ class IsbnLibraryStack(Stack):
             "BOOKS_TABLE_NAME": books_table.table_name,
             "CATEGORIES_TABLE_NAME": categories_table.table_name,
             "GOOGLE_BOOKS_API_KEY": google_books_api_key,
+            "RAKUTEN_APPLICATION_ID": rakuten_application_id,
+            "RAKUTEN_ACCESS_KEY": rakuten_access_key,
             "GOOGLE_WIF_CREDENTIAL_CONFIG_PARAMETER_NAME": google_wif_credential_config_parameter_name,
             "GOOGLE_SHEETS_SPREADSHEET_ID": google_sheets_spreadsheet_id,
             "GOOGLE_SHEETS_BOOKS_SHEET_NAME": google_sheets_books_sheet_name,
