@@ -19,8 +19,6 @@ jobs:
       CI: true
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       PLAYWRIGHT_HTML_REPORT: "1"
-      ISBN_LIBRARY_BACKEND_COVERAGE_XML: ${{ runner.temp }}/isbn-library-backend-coverage.xml
-      ISBN_LIBRARY_BACKEND_TEST_RESULTS_DIR: ${{ runner.temp }}/isbn-library-backend-test-results
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -64,6 +62,9 @@ jobs:
         run: cd frontend && npx playwright install --with-deps chromium
 
       - name: Run quality gates
+        env:
+          ISBN_LIBRARY_BACKEND_COVERAGE_XML: ${{ runner.temp }}/isbn-library-backend-coverage.xml
+          ISBN_LIBRARY_BACKEND_TEST_RESULTS_DIR: ${{ runner.temp }}/isbn-library-backend-test-results
         run: npm run quality:prepush
 
       - name: Upload backend coverage artifact
