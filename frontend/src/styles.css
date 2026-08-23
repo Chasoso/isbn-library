@@ -1154,6 +1154,9 @@ img {
 .manual-registration-form {
   display: grid;
   gap: 18px;
+  width: min(100%, var(--scan-form-width));
+  margin: 0 auto;
+  padding: 24px 0;
 }
 
 .manual-registration-form h3,
@@ -1193,6 +1196,21 @@ img {
   color: var(--danger, #b54a4a);
   font-size: var(--text-sm);
   font-weight: var(--weight-normal);
+}
+
+.manual-registration-form > .primary-button {
+  justify-self: start;
+  min-width: 220px;
+}
+
+@media (max-width: 640px) {
+  .manual-registration-form {
+    width: 100%;
+  }
+
+  .manual-registration-form > .primary-button {
+    width: 100%;
+  }
 }
 
 .categories-panel {

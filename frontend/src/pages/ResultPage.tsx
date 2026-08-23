@@ -88,7 +88,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
 
     const title = book?.title ?? manualTitle.trim();
     if (!title) {
-      setTitleError("Title is required.");
+      setTitleError("タイトルを入力してください。");
       return;
     }
 
@@ -119,6 +119,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
 
   return (
     <AppLayout title="スキャン結果" subtitle={`ISBN ${isbn}`}>
+      {!lookupFailed ? (
       <section className={`panel result-banner ${registered ? "is-registered" : "is-unregistered"}`}>
         <p className="section-label">SCAN RESULT</p>
         <h2>
@@ -126,19 +127,20 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
         </h2>
         {message ? <p className="subtle">{message}</p> : null}
       </section>
+      ) : null}
 
       {!loading && lookupFailed && !registered ? (
         <section className="panel manual-registration-form" aria-labelledby="manual-registration-title">
-          <p className="section-label">MANUAL REGISTRATION</p>
-          <h3 id="manual-registration-title">Book metadata was not found</h3>
+          <p className="section-label">手動登録</p>
+          <h3 id="manual-registration-title">書誌情報が見つかりませんでした</h3>
           <p className="subtle">
             ISBN: <strong>{isbn}</strong>
             <br />
-            The book may not be registered with the external providers.
+            外部サービスから書誌情報を取得できませんでした。必要な情報を入力して登録できます。
           </p>
           <div className="manual-fields">
             <label>
-              <span>Title *</span>
+              <span>タイトル *</span>
               <input
                 name="title"
                 value={manualTitle}
@@ -157,11 +159,11 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
               ) : null}
             </label>
             <label>
-              <span>Author</span>
+              <span>著者</span>
               <input name="author" value={manualAuthor} onChange={(event) => setManualAuthor(event.target.value)} />
             </label>
             <label>
-              <span>Publisher</span>
+              <span>出版社</span>
               <input
                 name="publisher"
                 value={manualPublisher}
@@ -171,7 +173,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
           </div>
           <div className="classification-grid">
             <label>
-              <span>Book format</span>
+              <span>書籍形式</span>
               <select value={bookFormat} onChange={(event) => setBookFormat(event.target.value as BookFormat)}>
                 {bookFormats.map((item) => (
                   <option key={item} value={item}>
@@ -181,7 +183,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
               </select>
             </label>
             <label>
-              <span>Category</span>
+              <span>カテゴリ</span>
               <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
                 {categories.map((item) => (
                   <option key={item.categoryId} value={item.categoryId}>
@@ -191,7 +193,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
               </select>
             </label>
             <label>
-              <span>Reading status</span>
+              <span>読書状態</span>
               <select value={readingStatus} onChange={(event) => setReadingStatus(event.target.value as ReadingStatus)}>
                 {readingStatuses.map((item) => (
                   <option key={item} value={item}>
@@ -208,11 +210,12 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
             onClick={() => void handleCreate()}
             disabled={categories.length === 0}
           >
-            Register manually
+            この内容で登録する
           </button>
         </section>
       ) : null}
 
+      {!lookupFailed ? (
       <section className="panel detail-panel">
         <div className="section-heading">
           <div>
@@ -318,6 +321,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
           </>
         ) : null}
       </section>
+      ) : null}
     </AppLayout>
   );
 }
