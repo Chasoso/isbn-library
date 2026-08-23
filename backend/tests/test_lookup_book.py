@@ -198,6 +198,49 @@ def test_lookup_book_returns_502_for_malformed_ndl_response(lambda_event: dict[s
     assert "malformed XML" in body["message"]
 
 
+def test_lookup_book_returns_502_for_ndl_http_error(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+    upstream_error = HTTPError(
+        url="https://ndlsearch.ndl.go.jp/api/opensearch",
+        code=503,
+        msg="Service Unavailable",
+        hdrs=None,
+        fp=None,
+    )
+
+    with patch.dict(
+        "os.environ",
+        {"RAKUTEN_APPLICATION_ID": "test-app-id", "RAKUTEN_ACCESS_KEY": "test-access-key"},
+        clear=False,
+    ), patch.object(
+        lookup_book_handler,
+        "urlopen",
+        side_effect=[FakeResponse(b'{"items":[]}'), FakeResponse(b'{"Items":[]}'), upstream_error],
+    ):
+        status_code, body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 502
+    assert "Failed to lookup book" in body["message"]
+
+
+def test_lookup_book_returns_502_for_ndl_timeout(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+
+    with patch.dict(
+        "os.environ",
+        {"RAKUTEN_APPLICATION_ID": "test-app-id", "RAKUTEN_ACCESS_KEY": "test-access-key"},
+        clear=False,
+    ), patch.object(
+        lookup_book_handler,
+        "urlopen",
+        side_effect=[FakeResponse(b'{"items":[]}'), FakeResponse(b'{"Items":[]}'), URLError("timeout")],
+    ):
+        status_code, body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 502
+    assert "Failed to lookup book" in body["message"]
+
+
 def test_lookup_book_returns_502_for_rakuten_http_error(lambda_event: dict[str, object]) -> None:
     lambda_event["pathParameters"] = {"isbn": "9784860648114"}
     upstream_error = HTTPError(
