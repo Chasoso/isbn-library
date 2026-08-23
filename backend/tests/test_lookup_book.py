@@ -35,6 +35,21 @@ def test_lookup_book_returns_metadata(lambda_event: dict[str, object]) -> None:
     assert body["title"] == "Book"
 
 
+def test_lookup_book_does_not_call_rakuten_when_google_succeeds(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+    payload = b'{"items":[{"volumeInfo":{"title":"Book"}}]}'
+
+    with patch.dict(
+        "os.environ",
+        {"RAKUTEN_APPLICATION_ID": "test-app-id", "RAKUTEN_ACCESS_KEY": "test-access-key"},
+        clear=False,
+    ), patch.object(lookup_book_handler, "urlopen", return_value=FakeResponse(payload)) as mocked_urlopen:
+        status_code, _body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 200
+    assert mocked_urlopen.call_count == 1
+
+
 def test_lookup_book_prefers_larger_cover_images(lambda_event: dict[str, object]) -> None:
     lambda_event["pathParameters"] = {"isbn": "9784860648114"}
     payload = (
@@ -49,6 +64,98 @@ def test_lookup_book_prefers_larger_cover_images(lambda_event: dict[str, object]
 
     assert status_code == 200
     assert body["coverImageUrl"] == "https://example.com/extra-large"
+
+
+def test_lookup_book_falls_back_to_rakuten_when_google_has_no_result(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+    google_payload = b'{"items":[]}'
+    rakuten_payload = (
+        b'{"Items":[{"title":"Rakuten Book","author":"Author",'
+        b'"publisherName":"Publisher","salesDate":"2024-02-01",'
+        b'"isbn":"9784860648114","largeImageUrl":"https://example.com/cover"}]}'
+    )
+
+    with patch.dict(
+        "os.environ",
+        {"RAKUTEN_APPLICATION_ID": "test-app-id", "RAKUTEN_ACCESS_KEY": "test-access-key"},
+        clear=False,
+    ), patch.object(
+        lookup_book_handler,
+        "urlopen",
+        side_effect=[FakeResponse(google_payload), FakeResponse(rakuten_payload)],
+    ) as mocked_urlopen:
+        status_code, body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 200
+    assert body == {
+        "isbn": "9784860648114",
+        "title": "Rakuten Book",
+        "author": "Author",
+        "publisher": "Publisher",
+        "publishedDate": "2024-02-01",
+        "coverImageUrl": "https://example.com/cover",
+    }
+    assert mocked_urlopen.call_count == 2
+    rakuten_request = mocked_urlopen.call_args_list[1].args[0]
+    assert "test-access-key" not in rakuten_request.full_url
+    assert rakuten_request.get_header("Accesskey") == "test-access-key"
+
+
+def test_lookup_book_returns_404_when_both_providers_have_no_result(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+
+    with patch.dict(
+        "os.environ",
+        {"RAKUTEN_APPLICATION_ID": "test-app-id", "RAKUTEN_ACCESS_KEY": "test-access-key"},
+        clear=False,
+    ), patch.object(
+        lookup_book_handler,
+        "urlopen",
+        side_effect=[FakeResponse(b'{"items":[]}'), FakeResponse(b'{"Items":[]}')],
+    ):
+        status_code, body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 404
+    assert body["message"] == "Book metadata not found"
+
+
+def test_lookup_book_returns_502_for_rakuten_http_error(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+    upstream_error = HTTPError(
+        url="https://example.com",
+        code=500,
+        msg="Internal Server Error",
+        hdrs=None,
+        fp=None,
+    )
+
+    with patch.dict(
+        "os.environ",
+        {"RAKUTEN_APPLICATION_ID": "test-app-id", "RAKUTEN_ACCESS_KEY": "test-access-key"},
+        clear=False,
+    ), patch.object(
+        lookup_book_handler, "urlopen", side_effect=[FakeResponse(b'{"items":[]}'), upstream_error]
+    ):
+        status_code, body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 502
+    assert "Failed to lookup book" in body["message"]
+
+
+def test_lookup_book_returns_502_for_rakuten_timeout(lambda_event: dict[str, object]) -> None:
+    lambda_event["pathParameters"] = {"isbn": "9784860648114"}
+
+    with patch.dict(
+        "os.environ",
+        {"RAKUTEN_APPLICATION_ID": "test-app-id", "RAKUTEN_ACCESS_KEY": "test-access-key"},
+        clear=False,
+    ), patch.object(
+        lookup_book_handler, "urlopen", side_effect=[FakeResponse(b'{"items":[]}'), URLError("timeout")]
+    ):
+        status_code, body = parse_response(lookup_book_handler.handler(lambda_event, None))
+
+    assert status_code == 502
+    assert "Failed to lookup book" in body["message"]
 
 
 def test_lookup_book_includes_api_key_when_configured(lambda_event: dict[str, object]) -> None:
