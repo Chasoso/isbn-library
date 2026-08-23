@@ -118,6 +118,8 @@ async function runMobileChecks(page) {
   await page.locator(".scan-manual input").fill("9780000000000");
   await page.locator(".scan-manual .primary-button").click();
   await expect(page.locator(".manual-registration-form")).toBeVisible();
+  await expect(page.locator(".manual-registration-form")).toContainText("手動登録");
+  await expect(page.locator(".detail-panel")).toHaveCount(0);
   await expect(page.locator(".manual-registration-form input[name=title]")).toHaveValue("");
   await page.locator('[data-testid="manual-register-button"]').click();
   await expect(page.locator("#manual-title-error")).toBeVisible();
