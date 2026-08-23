@@ -115,6 +115,18 @@ async function runMobileChecks(page) {
   await expect(page.locator(".scan-panel")).toBeVisible();
   await expect(page.locator(".scan-message")).toBeVisible();
   await expect(page.locator(".scan-manual")).toBeVisible();
+  await page.locator(".scan-manual input").fill("9780000000000");
+  await page.locator(".scan-manual .primary-button").click();
+  await expect(page.locator(".manual-registration-form")).toBeVisible();
+  await expect(page.locator(".manual-registration-form input[name=title]")).toHaveValue("");
+  await page.locator('[data-testid="manual-register-button"]').click();
+  await expect(page.locator("#manual-title-error")).toBeVisible();
+  await page.locator(".manual-registration-form input[name=title]").fill("Demo manual book");
+  await page.locator(".manual-registration-form input[name=author]").fill("Demo author");
+  await page.locator(".manual-registration-form input[name=publisher]").fill("Demo publisher");
+  await page.locator('[data-testid="manual-register-button"]').click();
+  await expect(page).toHaveURL(/\/books\/9780000000000$/);
+  await expect(page.locator(".detail-layout")).toBeVisible();
   await assertNoHorizontalScroll(page);
 }
 

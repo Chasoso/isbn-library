@@ -154,6 +154,10 @@ export const mockSession = {
     return { items: [...memoryCategories].sort((left, right) => left.sortOrder - right.sortOrder) };
   },
   lookupBook(isbn: string): BookLookupResult {
+    if (isbn === "9780000000000") {
+      throw new Error("Book metadata not found");
+    }
+
     const existing = memoryBooks.find((item) => item.isbn === isbn);
     if (existing) {
       return {

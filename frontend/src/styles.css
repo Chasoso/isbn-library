@@ -1151,6 +1151,50 @@ img {
   border-top: 1px solid var(--rule);
 }
 
+.manual-registration-form {
+  display: grid;
+  gap: 18px;
+}
+
+.manual-registration-form h3,
+.manual-registration-form p {
+  margin: 0;
+}
+
+.manual-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.manual-fields label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.manual-fields input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.manual-fields input[aria-invalid="true"] {
+  border-color: var(--danger, #b54a4a);
+}
+
+.field-error {
+  color: var(--danger, #b54a4a);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-normal);
+}
+
 .categories-panel {
   display: grid;
   gap: 16px;
