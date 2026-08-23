@@ -20,8 +20,11 @@ Lambda テスト専用のワークフローは [backend-tests.yml](/d:/Git/isbn-
 
 - `AWS_DEPLOY_ROLE_ARN`
 - `GOOGLE_BOOKS_API_KEY` (optional)
+- `RAKUTEN_APPLICATION_ID` (optional repository variable)
+- `RAKUTEN_ACCESS_KEY` (optional repository secret)
 
 `GOOGLE_BOOKS_API_KEY` is passed only to the `cdk deploy` step via GitHub Secrets and is not echoed in the workflow logs. If it is not set, the lookup Lambda continues calling Google Books API without an API key.
+`RAKUTEN_APPLICATION_ID` and `RAKUTEN_ACCESS_KEY` are passed only to the `cdk deploy` step. The access key is sent to Rakuten in an HTTP header and is never included in the request URL or application logs.
 - Amplify Hosting に対象アプリが作成済み
 - CDK の初回 `bootstrap` が済んでいる
 - GitHub Actions から AWS にアクセスできる IAM Role を用意する

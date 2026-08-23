@@ -22,6 +22,10 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
   const [bookFormat, setBookFormat] = useState<BookFormat>(defaultBookFormat);
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [readingStatus, setReadingStatus] = useState<ReadingStatus>(defaultReadingStatus);
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualAuthor, setManualAuthor] = useState("");
+  const [manualPublisher, setManualPublisher] = useState("");
+  const [titleError, setTitleError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadCategories = async (): Promise<void> => {
@@ -80,16 +84,24 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
   }, [accessToken, isbn]);
 
   const handleCreate = async (): Promise<void> => {
-    if (!book || registered) return;
+    if (registered || (!book && !lookupFailed)) return;
+
+    const title = book?.title ?? manualTitle.trim();
+    if (!title) {
+      setTitleError("タイトルを入力してください。");
+      return;
+    }
+
+    setTitleError(null);
 
     try {
       await createBook(accessToken, {
         isbn,
-        title: book.title,
-        author: book.author,
-        publisher: book.publisher,
-        publishedDate: book.publishedDate,
-        coverImageUrl: book.coverImageUrl,
+        title,
+        author: book?.author ?? manualAuthor.trim(),
+        publisher: book?.publisher ?? manualPublisher.trim(),
+        publishedDate: book?.publishedDate ?? "",
+        coverImageUrl: book?.coverImageUrl ?? "",
         bookFormat,
         categoryId,
         readingStatus,
@@ -107,6 +119,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
 
   return (
     <AppLayout title="スキャン結果" subtitle={`ISBN ${isbn}`}>
+      {!lookupFailed ? (
       <section className={`panel result-banner ${registered ? "is-registered" : "is-unregistered"}`}>
         <p className="section-label">SCAN RESULT</p>
         <h2>
@@ -114,7 +127,95 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
         </h2>
         {message ? <p className="subtle">{message}</p> : null}
       </section>
+      ) : null}
 
+      {!loading && lookupFailed && !registered ? (
+        <section className="panel manual-registration-form" aria-labelledby="manual-registration-title">
+          <p className="section-label">手動登録</p>
+          <h3 id="manual-registration-title">書誌情報が見つかりませんでした</h3>
+          <p className="subtle">
+            ISBN: <strong>{isbn}</strong>
+            <br />
+            外部サービスから書誌情報を取得できませんでした。必要な情報を入力して登録できます。
+          </p>
+          <div className="manual-fields">
+            <label>
+              <span>タイトル *</span>
+              <input
+                name="title"
+                value={manualTitle}
+                onChange={(event) => {
+                  setManualTitle(event.target.value);
+                  if (event.target.value.trim()) setTitleError(null);
+                }}
+                aria-invalid={Boolean(titleError)}
+                aria-describedby={titleError ? "manual-title-error" : undefined}
+                required
+              />
+              {titleError ? (
+                <span id="manual-title-error" className="field-error" role="alert">
+                  {titleError}
+                </span>
+              ) : null}
+            </label>
+            <label>
+              <span>著者</span>
+              <input name="author" value={manualAuthor} onChange={(event) => setManualAuthor(event.target.value)} />
+            </label>
+            <label>
+              <span>出版社</span>
+              <input
+                name="publisher"
+                value={manualPublisher}
+                onChange={(event) => setManualPublisher(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="classification-grid">
+            <label>
+              <span>書籍形式</span>
+              <select value={bookFormat} onChange={(event) => setBookFormat(event.target.value as BookFormat)}>
+                {bookFormats.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>カテゴリ</span>
+              <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+                {categories.map((item) => (
+                  <option key={item.categoryId} value={item.categoryId}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>読書状態</span>
+              <select value={readingStatus} onChange={(event) => setReadingStatus(event.target.value as ReadingStatus)}>
+                {readingStatuses.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button
+            type="button"
+            className="primary-button"
+            data-testid="manual-register-button"
+            onClick={() => void handleCreate()}
+            disabled={categories.length === 0}
+          >
+            この内容で登録する
+          </button>
+        </section>
+      ) : null}
+
+      {!lookupFailed ? (
       <section className="panel detail-panel">
         <div className="section-heading">
           <div>
@@ -220,6 +321,7 @@ export function ResultPage({ accessToken }: { accessToken: string }) {
           </>
         ) : null}
       </section>
+      ) : null}
     </AppLayout>
   );
 }

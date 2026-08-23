@@ -52,6 +52,8 @@ def test_create_book_success(lambda_event: dict[str, object]) -> None:
     assert body["categoryId"] == VALID_CATEGORY["categoryId"]
     assert body["categoryName"] == VALID_CATEGORY["name"]
     assert body["readingStatus"] == VALID_READING_STATUS
+    assert body["publishedDate"] == ""
+    assert body["coverImageUrl"] == ""
     assert body["titleEn"] == "Sample"
     assert body["titleEnSource"] == "none"
     table.put_item.assert_called_once()
